@@ -2,15 +2,15 @@ export interface CreateEventoDto {
   nucleoId: string;
   titulo: string;
   descricao?: string;
-  dataEvento: Date;
+  dataEvento: string | Date;
   duracaoMinutos?: number;
 }
 
 export interface UpdateEventoDto {
   titulo?: string;
   descricao?: string;
-  dataEvento?: Date;
-  duracaoMinutos?: number | null;
+  dataEvento?: string | Date;
+  duracaoMinutos?: number;
 }
 
 export interface EventoResponseDto {
@@ -20,12 +20,6 @@ export interface EventoResponseDto {
   descricao: string | null;
   dataEvento: string;
   duracaoMinutos: number | null;
-  dataFim: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface EventoPorPeriodoDto {
-  startDate: Date;
-  endDate: Date;
 }

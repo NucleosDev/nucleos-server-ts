@@ -1,35 +1,36 @@
 import { ICalendarioRepository } from "../../../domain/repositories/ICalendarioRepository";
-import { EventoResponseDto } from "../../dto/calendario.dto";
+import { INucleoRepository } from "../../../domain/repositories/INucleoRepository";
 import { GetEventosByNucleoQuery } from "./GetEventosByNucleoQuery";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
 
 export class GetEventosByNucleoHandler {
-  constructor(private readonly calendarioRepository: ICalendarioRepository) {}
+  constructor(
+    private readonly eventoRepository: ICalendarioRepository,
+    private readonly nucleoRepository: INucleoRepository,
+  ) {}
 
-  async execute(query: GetEventosByNucleoQuery): Promise<EventoResponseDto[]> {
-    let eventos;
+  async execute(query: GetEventosByNucleoQuery): Promise<any[]> {
+    const { userId, nucleoId, startDate, endDate } = query;
 
-    if (query.startDate && query.endDate) {
-      eventos = await this.calendarioRepository.findAllByDateRange(
-        query.nucleoId,
-        query.startDate,
-        query.endDate,
-      );
-    } else {
-      eventos = await this.calendarioRepository.findAllByNucleoId(
-        query.nucleoId,
-      );
+    const nucleo = await this.nucleoRepository.findById(nucleoId, userId);
+    if (!nucleo) {
+      throw new NotFoundException("Núcleo", nucleoId);
     }
 
-    return eventos.map((evento) => ({
-      id: evento.id,
-      nucleoId: evento.nucleoId,
-      titulo: evento.titulo,
-      descricao: evento.descricao,
-      dataEvento: evento.dataEvento.toISOString(),
-      duracaoMinutos: evento.duracaoMinutos,
-      dataFim: evento.dataFim?.toISOString() || null,
-      createdAt: evento.createdAt.toISOString(),
-      updatedAt: evento.updatedAt.toISOString(),
+    const eventos = await this.eventoRepository.findAllByNucleoId(
+      nucleoId,
+      startDate,
+      endDate,
+    );
+    return eventos.map((e) => ({
+      id: e.id,
+      nucleoId: e.nucleoId,
+      titulo: e.titulo,
+      descricao: e.descricao,
+      dataEvento: e.dataEvento.toISOString(),
+      duracaoMinutos: e.duracaoMinutos,
+      createdAt: e.createdAt.toISOString(),
+      updatedAt: e.updatedAt.toISOString(),
     }));
   }
 }

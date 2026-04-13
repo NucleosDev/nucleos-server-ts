@@ -1,52 +1,49 @@
-import { Colecao } from '../../../domain/entities/Colecao';
-import { IColecaoRepository } from '../../../domain/repositories/IColecaoRepository';
-import { ICurrentUserService } from '../../interfaces/ICurrentUserService';
-import { pool } from '../../../infrastructure/persistence/db/connection';
-import { CreateColecaoCommand } from './CreateColecaoCommand';
-import { ColecaoResponseDto } from '../../dto/colecao.dto';
+import { IColecaoRepository } from "../../../domain/repositories/IColecaoRepository";
+import { CreateColecaoCommand } from "./CreateColecaoCommand";
+import { pool } from "../../../infrastructure/persistence/db/connection";
+import { randomUUID } from "crypto";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class CreateColecaoHandler {
-  constructor(
-    private readonly colecaoRepository: IColecaoRepository,
-    private readonly currentUserService: ICurrentUserService
-  ) {}
+  constructor(private readonly colecaoRepository: IColecaoRepository) {}
 
-  async execute(command: CreateColecaoCommand): Promise<ColecaoResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error('Usuário não autenticado');
-    }
+  async execute(command: CreateColecaoCommand): Promise<any> {
+    const { userId, blocoId, nome } = command;
 
-    // Verificar se o bloco pertence ao usuário
+    // Verificar permissão
     const blocoCheck = await pool.query(
-      `SELECT b.id, n.user_id 
-       FROM blocos b
-       JOIN nucleos n ON b.nucleo_id = n.id
+      `SELECT n.user_id FROM blocos b
+       JOIN nucleos n ON n.id = b.nucleo_id
        WHERE b.id = $1 AND b.deleted_at IS NULL`,
-      [command.blocoId]
+      [blocoId],
     );
 
     if (blocoCheck.rows.length === 0) {
-      throw new Error('Bloco não encontrado');
+      throw new NotFoundException("Bloco", blocoId);
     }
 
     if (blocoCheck.rows[0].user_id !== userId) {
-      throw new Error('Acesso negado');
+      throw new ForbiddenException(
+        "Sem permissão para criar coleção neste bloco",
+      );
     }
 
-    const colecao = Colecao.create({
-      blocoId: command.blocoId,
-      nome: command.nome
-    });
+    const id = randomUUID();
+    const now = new Date();
 
-    await this.colecaoRepository.saveColecao(colecao);
+    await pool.query(
+      `INSERT INTO colecoes (id, bloco_id, nome, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [id, blocoId, nome, now, now],
+    );
 
     return {
-      id: colecao.id,
-      blocoId: colecao.blocoId,
-      nome: colecao.nome,
-      createdAt: colecao.createdAt.toISOString(),
-      updatedAt: colecao.updatedAt.toISOString()
+      id,
+      blocoId,
+      nome,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     };
   }
 }

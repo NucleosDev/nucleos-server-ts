@@ -1,56 +1,67 @@
-import { IListaRepository } from '../../../domain/repositories/IListaRepository';
-import { ICurrentUserService } from '../../interfaces/ICurrentUserService';
-import { UpdateListaCommand } from './UpdateListaCommand';
-import { ListaResponseDto } from '../../dto/lista.dto';
-import { pool } from '../../../infrastructure/persistence/db/connection';
+// application/commands/listas/UpdateListaHandler.ts
+import { IListaRepository } from "../../../domain/repositories/IListaRepository";
+import { UpdateListaCommand } from "./UpdateListaCommand";
+import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class UpdateListaHandler {
-  constructor(
-    private readonly listaRepository: IListaRepository,
-    private readonly currentUserService: ICurrentUserService
-  ) {}
+  constructor(private readonly listaRepository: IListaRepository) {}
 
-  async execute(command: UpdateListaCommand): Promise<ListaResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error('Usuário não autenticado');
-    }
-
-    const lista = await this.listaRepository.findListaById(command.id);
-    if (!lista) {
-      throw new Error('Lista não encontrada');
-    }
+  async execute(command: UpdateListaCommand): Promise<any> {
+    const { id, userId, nome, tipoLista } = command;
 
     // Verificar permissão
-    const blocoCheck = await pool.query(
-      `SELECT n.user_id 
-       FROM listas l
-       JOIN blocos b ON l.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
-       WHERE l.id = $1`,
-      [command.id]
+    const check = await pool.query(
+      `SELECT n.user_id FROM listas l
+       JOIN blocos b ON b.id = l.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
+       WHERE l.id = $1 AND l.deleted_at IS NULL`,
+      [id],
     );
 
-    if (blocoCheck.rows[0]?.user_id !== userId) {
-      throw new Error('Acesso negado');
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Lista", id);
     }
 
-    if (command.nome !== undefined) {
-      lista.updateNome(command.nome);
-    }
-    if (command.tipoLista !== undefined) {
-      lista.updateTipoLista(command.tipoLista);
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException("Sem permissão para editar esta lista");
     }
 
-    await this.listaRepository.updateLista(lista);
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (nome !== undefined) {
+      updates.push(`nome = $${paramIndex++}`);
+      values.push(nome);
+    }
+    if (tipoLista !== undefined) {
+      updates.push(`tipo_lista = $${paramIndex++}`);
+      values.push(tipoLista);
+    }
+
+    if (updates.length === 0) {
+      throw new Error("Nenhum campo para atualizar");
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(id);
+
+    await pool.query(
+      `UPDATE listas SET ${updates.join(", ")} WHERE id = $${paramIndex}`,
+      values,
+    );
+
+    const result = await pool.query(`SELECT * FROM listas WHERE id = $1`, [id]);
 
     return {
-      id: lista.id,
-      blocoId: lista.blocoId,
-      nome: lista.nome,
-      tipoLista: lista.tipoLista,
-      createdAt: lista.createdAt.toISOString(),
-      updatedAt: lista.updatedAt.toISOString()
+      id: result.rows[0].id,
+      blocoId: result.rows[0].bloco_id,
+      nome: result.rows[0].nome,
+      tipoLista: result.rows[0].tipo_lista,
+      createdAt: result.rows[0].created_at,
+      updatedAt: result.rows[0].updated_at,
     };
   }
 }

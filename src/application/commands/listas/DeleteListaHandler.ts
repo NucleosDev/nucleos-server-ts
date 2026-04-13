@@ -1,39 +1,31 @@
 import { IListaRepository } from "../../../domain/repositories/IListaRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { DeleteListaCommand } from "./DeleteListaCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class DeleteListaHandler {
-  constructor(
-    private readonly listaRepository: IListaRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly listaRepository: IListaRepository) {} // ✅ Apenas 1 parâmetro
 
   async execute(command: DeleteListaCommand): Promise<void> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+    const { id, userId } = command;
 
-    const lista = await this.listaRepository.findListaById(command.id);
-    if (!lista) {
-      throw new Error("Lista não encontrada");
-    }
-
-    // Verificar permissão
-    const blocoCheck = await pool.query(
-      `SELECT n.user_id 
-       FROM listas l
-       JOIN blocos b ON l.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
-       WHERE l.id = $1`,
-      [command.id],
+    const check = await pool.query(
+      `SELECT n.user_id FROM listas l
+       JOIN blocos b ON b.id = l.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
+       WHERE l.id = $1 AND l.deleted_at IS NULL`,
+      [id],
     );
 
-    if (blocoCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Lista", id);
     }
 
-    await this.listaRepository.deleteLista(command.id);
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException("Sem permissão para deletar esta lista");
+    }
+
+    await this.listaRepository.deleteLista(id);
   }
 }

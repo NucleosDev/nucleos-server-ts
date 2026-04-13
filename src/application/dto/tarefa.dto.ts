@@ -1,4 +1,4 @@
-import { PrioridadeTarefa, StatusTarefa } from '../../domain/entities/Tarefa';
+import { PrioridadeTarefa, StatusTarefa } from "../../domain/entities/Tarefa";
 
 export interface CreateTarefaDto {
   blocoId: string;

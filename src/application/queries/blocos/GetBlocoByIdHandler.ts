@@ -1,36 +1,27 @@
 import { IBlocoRepository } from "../../../domain/repositories/IBlocoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { GetBlocoByIdQuery } from "./GetBlocoByIdQuery";
 import { BlocoResponseDto } from "../../dto/bloco.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
 
 export class GetBlocoByIdHandler {
-  constructor(
-    private readonly blocoRepository: IBlocoRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly blocoRepository: IBlocoRepository) {}
 
   async execute(query: GetBlocoByIdQuery): Promise<BlocoResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+    const { id, userId, nucleoId } = query;
 
-    // Verificar permissão
     const nucleoCheck = await pool.query(
-      `SELECT n.id FROM nucleos n
-       INNER JOIN blocos b ON b.nucleo_id = n.id
-       WHERE b.id = $1 AND n.user_id = $2 AND n.deleted_at IS NULL AND b.deleted_at IS NULL`,
-      [query.id, userId],
+      `SELECT id FROM nucleos WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
+      [nucleoId, userId],
     );
 
     if (nucleoCheck.rows.length === 0) {
-      throw new Error("Bloco não encontrado ou sem permissão");
+      throw new NotFoundException("Núcleo", nucleoId);
     }
 
-    const bloco = await this.blocoRepository.findById(query.id, query.nucleoId);
+    const bloco = await this.blocoRepository.findById(id, nucleoId);
     if (!bloco) {
-      throw new Error("Bloco não encontrado");
+      throw new NotFoundException("Bloco", id);
     }
 
     return {

@@ -1,46 +1,51 @@
+// application/commands/blocos/UpdateBlocoHandler.ts
 import { IBlocoRepository } from "../../../domain/repositories/IBlocoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
-import { UpdateBlocoCommand } from "./UpdateBlocoCommand"
+import { UpdateBlocoCommand } from "./UpdateBlocoCommand";
 import { BlocoResponseDto } from "../../dto/bloco.dto";
-import { pool } from "../../../infrastructure/persistence/db/connection";
+import {
+  isTipoBloco,
+  TipoBloco,
+} from "../../../domain/value-objects/TipoBloco";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
 
 export class UpdateBlocoHandler {
-  constructor(
-    private readonly blocoRepository: IBlocoRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly blocoRepository: IBlocoRepository) {}
 
   async execute(command: UpdateBlocoCommand): Promise<BlocoResponseDto> {
-    const userId = this.currentUserService.getUserId();
+    const { id, userId, nucleoId, titulo, tipo, posicao, configuracoes } =
+      command;
+
     if (!userId) {
       throw new Error("Usuário não autenticado");
     }
 
-    // Verificar permissão via núcleo
-    const nucleoCheck = await pool.query(
-      `SELECT n.id FROM nucleos n
-       INNER JOIN blocos b ON b.nucleo_id = n.id
-       WHERE b.id = $1 AND n.user_id = $2 AND n.deleted_at IS NULL AND b.deleted_at IS NULL`,
-      [command.id, userId],
-    );
-
-    if (nucleoCheck.rows.length === 0) {
-      throw new Error("Bloco não encontrado ou sem permissão");
-    }
-
-    const bloco = await this.blocoRepository.findById(
-      command.id,
-      command.nucleoId,
-    );
+    const bloco = await this.blocoRepository.findById(id, nucleoId);
     if (!bloco) {
-      throw new Error("Bloco não encontrado");
+      throw new NotFoundException("Bloco", id);
     }
 
-    if (command.titulo !== undefined) bloco.updateTitulo(command.titulo);
-    if (command.tipo !== undefined) bloco.updateTipo(command.tipo);
-    if (command.posicao !== undefined) bloco.updatePosicao(command.posicao);
-    if (command.configuracoes !== undefined)
-      bloco.updateConfiguracoes(command.configuracoes);
+    // ✅ Atualizar titulo (string)
+    if (titulo !== undefined) {
+      bloco.updateTitulo(titulo);
+    }
+
+    // ✅ Validar e converter tipo antes de atualizar
+    if (tipo !== undefined) {
+      if (!isTipoBloco(tipo)) {
+        throw new Error(`Tipo de bloco inválido: ${tipo}`);
+      }
+      bloco.updateTipo(tipo as TipoBloco);
+    }
+
+    // ✅ Atualizar posicao (number)
+    if (posicao !== undefined) {
+      bloco.updatePosicao(posicao);
+    }
+
+    // ✅ Atualizar configuracoes
+    if (configuracoes !== undefined) {
+      bloco.updateConfiguracoes(configuracoes);
+    }
 
     await this.blocoRepository.update(bloco);
 

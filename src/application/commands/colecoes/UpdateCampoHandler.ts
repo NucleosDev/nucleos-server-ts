@@ -1,54 +1,66 @@
 import { IColecaoRepository } from "../../../domain/repositories/IColecaoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { UpdateCampoCommand } from "./UpdateCampoCommand";
-import { CampoResponseDto } from "../../dto/colecao.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class UpdateCampoHandler {
-  constructor(
-    private readonly colecaoRepository: IColecaoRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly colecaoRepository: IColecaoRepository) {}
 
-  async execute(command: UpdateCampoCommand): Promise<CampoResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+  async execute(command: UpdateCampoCommand): Promise<any> {
+    const { id, userId, nome, tipoCampo } = command;
 
-    const campo = await this.colecaoRepository.findCampoById(command.id);
-    if (!campo) {
-      throw new Error("Campo não encontrado");
-    }
-
-    // Verificar permissão via coleção
-    const colecaoCheck = await pool.query(
-      `SELECT n.user_id 
-       FROM campos c
-       JOIN colecoes co ON c.colecao_id = co.id
-       JOIN blocos b ON co.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
+    const check = await pool.query(
+      `SELECT n.user_id FROM campos c
+       JOIN colecoes co ON co.id = c.colecao_id
+       JOIN blocos b ON b.id = co.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
        WHERE c.id = $1`,
-      [command.id],
+      [id],
     );
 
-    if (colecaoCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Campo", id);
     }
 
-    if (command.nome !== undefined) campo.updateNome(command.nome);
-    if (command.tipoCampo !== undefined)
-      campo.updateTipoCampo(command.tipoCampo);
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException("Sem permissão para editar este campo");
+    }
 
-    await this.colecaoRepository.updateCampo(campo);
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
+
+    if (nome !== undefined) {
+      updates.push(`nome = $${paramIndex++}`);
+      values.push(nome);
+    }
+    if (tipoCampo !== undefined) {
+      updates.push(`tipo_campo = $${paramIndex++}`);
+      values.push(tipoCampo);
+    }
+
+    if (updates.length === 0) {
+      throw new Error("Nenhum campo para atualizar");
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(id);
+
+    await pool.query(
+      `UPDATE campos SET ${updates.join(", ")} WHERE id = $${paramIndex}`,
+      values,
+    );
+
+    const result = await pool.query(`SELECT * FROM campos WHERE id = $1`, [id]);
 
     return {
-      id: campo.id,
-      colecaoId: campo.colecaoId,
-      nome: campo.nome,
-      tipoCampo: campo.tipoCampo,
-      createdAt: campo.createdAt.toISOString(),
-      updatedAt: campo.updatedAt.toISOString(),
+      id: result.rows[0].id,
+      colecaoId: result.rows[0].colecao_id,
+      nome: result.rows[0].nome,
+      tipoCampo: result.rows[0].tipo_campo,
+      createdAt: result.rows[0].created_at,
+      updatedAt: result.rows[0].updated_at,
     };
   }
 }

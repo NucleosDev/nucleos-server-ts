@@ -53,5 +53,5 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Usar dumb-init para gerenciar sinais
 ENTRYPOINT ["dumb-init", "--"]
 
-# Comando para iniciar a aplicação - CORRIGIDO: .js em vez de .ts
+# Comando para iniciar a aplicação (.ts)
 CMD ["node", "dist/server.js"]

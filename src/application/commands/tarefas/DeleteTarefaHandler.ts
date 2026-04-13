@@ -1,23 +1,22 @@
 import { ITarefaRepository } from "../../../domain/repositories/ITarefaRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { DeleteTarefaCommand } from "./DeleteTarefaCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class DeleteTarefaHandler {
-  constructor(
-    private readonly tarefaRepository: ITarefaRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly tarefaRepository: ITarefaRepository) {}
 
   async execute(command: DeleteTarefaCommand): Promise<void> {
-    const userId = this.currentUserService.getUserId();
+    const { id, userId } = command;
+
     if (!userId) {
       throw new Error("Usuário não autenticado");
     }
 
-    const tarefa = await this.tarefaRepository.findById(command.id);
+    const tarefa = await this.tarefaRepository.findById(id);
     if (!tarefa) {
-      throw new Error("Tarefa não encontrada");
+      throw new NotFoundException("Tarefa", id);
     }
 
     // Verificar permissão
@@ -29,11 +28,12 @@ export class DeleteTarefaHandler {
       [tarefa.blocoId],
     );
 
-    if (blocoCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (blocoCheck.rows.length === 0 || blocoCheck.rows[0].user_id !== userId) {
+      throw new ForbiddenException(
+        "Você não tem permissão para deletar esta tarefa",
+      );
     }
 
-    //  Soft delete
-    await this.tarefaRepository.delete(command.id);
+    await this.tarefaRepository.delete(id);
   }
 }

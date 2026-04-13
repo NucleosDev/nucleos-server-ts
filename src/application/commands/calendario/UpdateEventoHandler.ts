@@ -1,45 +1,37 @@
 import { ICalendarioRepository } from "../../../domain/repositories/ICalendarioRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
+import { INucleoRepository } from "../../../domain/repositories/INucleoRepository";
 import { UpdateEventoCommand } from "./UpdateEventoCommand";
-import { EventoResponseDto } from "../../dto/calendario.dto";
-import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
 
 export class UpdateEventoHandler {
   constructor(
-    private readonly calendarioRepository: ICalendarioRepository,
-    private readonly currentUserService: ICurrentUserService,
+    private readonly eventoRepository: ICalendarioRepository,
+    private readonly nucleoRepository: INucleoRepository,
   ) {}
 
-  async execute(command: UpdateEventoCommand): Promise<EventoResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+  async execute(command: UpdateEventoCommand): Promise<any> {
+    const {
+      userId,
+      eventoId,
+      nucleoId,
+      titulo,
+      descricao,
+      dataEvento,
+      duracaoMinutos,
+    } = command;
 
-    const evento = await this.calendarioRepository.findById(command.id);
-    if (!evento) {
-      throw new Error("Evento não encontrado");
-    }
+    const nucleo = await this.nucleoRepository.findById(nucleoId, userId);
+    if (!nucleo) throw new NotFoundException("Núcleo", nucleoId);
 
-    // Verificar permissão via núcleo
-    const nucleoCheck = await pool.query(
-      `SELECT user_id FROM nucleos WHERE id = $1 AND deleted_at IS NULL`,
-      [evento.nucleoId],
-    );
+    const evento = await this.eventoRepository.findById(eventoId, nucleoId);
+    if (!evento) throw new NotFoundException("Evento", eventoId);
 
-    if (nucleoCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
-    }
+    if (titulo !== undefined) evento.updateTitulo(titulo);
+    if (descricao !== undefined) evento.updateDescricao(descricao);
+    if (dataEvento !== undefined) evento.updateDataEvento(dataEvento);
+    if (duracaoMinutos !== undefined) evento.updateDuracao(duracaoMinutos);
 
-    if (command.titulo !== undefined) evento.updateTitulo(command.titulo);
-    if (command.descricao !== undefined)
-      evento.updateDescricao(command.descricao);
-    if (command.dataEvento !== undefined)
-      evento.updateDataEvento(command.dataEvento);
-    if (command.duracaoMinutos !== undefined)
-      evento.updateDuracao(command.duracaoMinutos);
-
-    await this.calendarioRepository.update(evento);
+    await this.eventoRepository.update(evento);
 
     return {
       id: evento.id,
@@ -48,7 +40,6 @@ export class UpdateEventoHandler {
       descricao: evento.descricao,
       dataEvento: evento.dataEvento.toISOString(),
       duracaoMinutos: evento.duracaoMinutos,
-      dataFim: evento.dataFim?.toISOString() || null,
       createdAt: evento.createdAt.toISOString(),
       updatedAt: evento.updatedAt.toISOString(),
     };

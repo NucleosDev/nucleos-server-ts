@@ -1,3 +1,7 @@
 export class GetEventoByIdQuery {
-  constructor(public readonly id: string) {}
+  constructor(
+    public readonly userId: string,
+    public readonly eventoId: string,
+    public readonly nucleoId: string,
+  ) {}
 }

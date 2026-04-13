@@ -1,8 +1,6 @@
-import { TipoBloco } from "../../domain/value-objects/TipoBloco";
-
 export interface CreateBlocoDto {
   nucleoId: string;
-  tipo: TipoBloco;
+  tipo: string; // ✅ String (validado com isTipoBloco)
   titulo?: string;
   posicao?: number;
   configuracoes?: Record<string, any>;
@@ -10,7 +8,7 @@ export interface CreateBlocoDto {
 
 export interface UpdateBlocoDto {
   titulo?: string;
-  tipo?: TipoBloco;
+  tipo?: string;
   posicao?: number;
   configuracoes?: Record<string, any>;
 }
@@ -18,7 +16,7 @@ export interface UpdateBlocoDto {
 export interface BlocoResponseDto {
   id: string;
   nucleoId: string;
-  tipo: TipoBloco;
+  tipo: string;
   titulo: string | null;
   posicao: number;
   configuracoes: Record<string, any>;

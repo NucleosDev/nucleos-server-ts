@@ -1,23 +1,13 @@
+// application/queries/nucleos/GetNucleosHandler.ts
 import { INucleoRepository } from "../../../domain/repositories/INucleoRepository";
 import { GetNucleosQuery } from "./GetNucleosQuery";
 import { NucleoResponseDto } from "../../dto/nucleo.dto";
 
 export class GetNucleosHandler {
-  constructor(
-    private readonly nucleoRepository: INucleoRepository,
-    // ✅ REMOVA o CurrentUserService
-  ) {}
+  constructor(private readonly nucleoRepository: INucleoRepository) {}
 
   async execute(query: GetNucleosQuery): Promise<NucleoResponseDto[]> {
-    // ✅ USA O userId DO QUERY
-    const userId = query.userId;
-
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
-
-    const nucleos = await this.nucleoRepository.findAllByUserId(userId);
-
+    const nucleos = await this.nucleoRepository.findAllByUserId(query.userId);
     return nucleos.map((nucleo) => ({
       id: nucleo.id,
       userId: nucleo.userId,
@@ -27,9 +17,9 @@ export class GetNucleosHandler {
       corDestaque: nucleo.corDestaque,
       imagemCapa: nucleo.imagemCapa,
       iconId: nucleo.iconId,
-      createdAt: nucleo.createdAt.toISOString(),
-      updatedAt: nucleo.updatedAt.toISOString(),
-      deletedAt: nucleo.deletedAt?.toISOString() || null,
+      createdAt: nucleo.createdAt,
+      updatedAt: nucleo.updatedAt,
+      deletedAt: nucleo.deletedAt,
     }));
   }
 }

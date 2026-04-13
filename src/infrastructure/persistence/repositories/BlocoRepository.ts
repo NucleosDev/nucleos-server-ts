@@ -1,3 +1,4 @@
+// infrastructure/persistence/repositories/BlocoRepository.ts
 import { pool } from "../db/connection";
 import { Bloco, BlocoProps } from "../../../domain/entities/Bloco";
 import {
@@ -42,12 +43,12 @@ export class BlocoRepository implements IBlocoRepository {
     return this.mapToEntity(result.rows[0]);
   }
 
-  async findAllByNucleoId(nucleoId: string): Promise<Bloco[]> {
+  async findByNucleoId(nucleoId: string): Promise<Bloco[]> {
     const result = await pool.query(
       `SELECT * FROM blocos WHERE nucleo_id = $1 AND deleted_at IS NULL ORDER BY posicao ASC`,
       [nucleoId],
     );
-    return result.rows.map((row) => this.mapToEntity(row));
+    return result.rows.map((row: any) => this.mapToEntity(row));
   }
 
   async update(bloco: Bloco): Promise<void> {
@@ -68,34 +69,23 @@ export class BlocoRepository implements IBlocoRepository {
     );
   }
 
-  async delete(id: string, nucleoId: string): Promise<void> {
+  async delete(id: string): Promise<void> {
     await pool.query(
-      `UPDATE blocos SET deleted_at = NOW() WHERE id = $1 AND nucleo_id = $2 AND deleted_at IS NULL`,
-      [id, nucleoId],
+      `UPDATE blocos SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`,
+      [id],
     );
   }
 
-  async reorder(
+  async updatePosition(
+    id: string,
+    posicao: number,
     nucleoId: string,
-    orders: { id: string; posicao: number }[],
   ): Promise<void> {
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      for (const order of orders) {
-        await client.query(
-          `UPDATE blocos SET posicao = $1, updated_at = NOW() 
-           WHERE id = $2 AND nucleo_id = $3 AND deleted_at IS NULL`,
-          [order.posicao, order.id, nucleoId],
-        );
-      }
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
+    await pool.query(
+      `UPDATE blocos SET posicao = $1, updated_at = NOW() 
+       WHERE id = $2 AND nucleo_id = $3 AND deleted_at IS NULL`,
+      [posicao, id, nucleoId],
+    );
   }
 
   async saveCalculo(calculo: BlocoCalculo): Promise<void> {

@@ -1,40 +1,33 @@
 import { IColecaoRepository } from "../../../domain/repositories/IColecaoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { DeleteItemCommand } from "./DeleteItemCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class DeleteItemHandler {
-  constructor(
-    private readonly colecaoRepository: IColecaoRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly colecaoRepository: IColecaoRepository) {}
 
   async execute(command: DeleteItemCommand): Promise<void> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+    const { id, userId } = command;
 
-    const item = await this.colecaoRepository.findItemById(command.id);
-    if (!item) {
-      throw new Error("Item não encontrado");
-    }
-
-    // Verificar permissão via coleção
-    const colecaoCheck = await pool.query(
-      `SELECT n.user_id 
-       FROM itens i
+    const check = await pool.query(
+      `SELECT n.user_id FROM itens i
        JOIN colecoes c ON i.colecao_id = c.id
-       JOIN blocos b ON c.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
+       JOIN blocos b ON b.id = c.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
        WHERE i.id = $1`,
-      [command.id],
+      [id],
     );
 
-    if (colecaoCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Item", id);
     }
 
-    await this.colecaoRepository.deleteItem(command.id);
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException("Sem permissão para deletar este item");
+    }
+
+    await pool.query(`DELETE FROM item_valores WHERE item_id = $1`, [id]);
+    await pool.query(`DELETE FROM itens WHERE id = $1`, [id]);
   }
 }

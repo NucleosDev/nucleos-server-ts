@@ -1,4 +1,3 @@
-// src/domain/entities/Nucleo.ts
 import { v4 as uuidv4 } from "uuid";
 import { Bloco } from "./Bloco";
 import { CalendarioEvento } from "./CalendarioEvento";

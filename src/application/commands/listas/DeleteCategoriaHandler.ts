@@ -1,40 +1,34 @@
-
+// application/commands/listas/DeleteCategoriaHandler.ts
 import { IListaRepository } from "../../../domain/repositories/IListaRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { DeleteCategoriaCommand } from "./DeleteCategoriaCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class DeleteCategoriaHandler {
-  constructor(
-    private readonly listaRepository: IListaRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly listaRepository: IListaRepository) {}
 
   async execute(command: DeleteCategoriaCommand): Promise<void> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+    const { id, userId } = command;
 
-    const categoria = await this.listaRepository.findCategoriaById(command.id);
-    if (!categoria) {
-      throw new Error("Categoria não encontrada");
-    }
-
-    // Verificar permissão via lista
-    const listaCheck = await pool.query(
-      `SELECT n.user_id 
-       FROM listas l
-       JOIN blocos b ON l.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
-       WHERE l.id = $1`,
-      [categoria.listaId],
+    // Verificar permissão
+    const check = await pool.query(
+      `SELECT n.user_id FROM categorias c
+       JOIN listas l ON l.id = c.lista_id
+       JOIN blocos b ON b.id = l.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
+       WHERE c.id = $1`,
+      [id],
     );
 
-    if (listaCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Categoria", id);
     }
 
-    await this.listaRepository.deleteCategoria(command.id);
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException("Sem permissão para deletar esta categoria");
+    }
+
+    await pool.query(`DELETE FROM categorias WHERE id = $1`, [id]);
   }
 }

@@ -1,42 +1,44 @@
-import { Bloco } from "../../../domain/entities/Bloco";
+// application/commands/blocos/CreateBlocoHandler.ts
 import { IBlocoRepository } from "../../../domain/repositories/IBlocoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
+import { INucleoRepository } from "../../../domain/repositories/INucleoRepository";
 import { CreateBlocoCommand } from "./CreateBlocoCommand";
-import { BlocoResponseDto } from "../../dto/bloco.dto";
-import { pool } from "../../../infrastructure/persistence/db/connection";
+import { Bloco } from "../../../domain/entities/Bloco";
+import {
+  isTipoBloco,
+  TipoBloco,
+} from "../../../domain/value-objects/TipoBloco";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class CreateBlocoHandler {
   constructor(
     private readonly blocoRepository: IBlocoRepository,
-    private readonly currentUserService: ICurrentUserService,
+    private readonly nucleoRepository: INucleoRepository,
   ) {}
 
-  async execute(command: CreateBlocoCommand): Promise<BlocoResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
+  async execute(command: CreateBlocoCommand): Promise<any> {
+    const { userId, nucleoId, tipo, titulo, posicao, configuracoes } = command;
+
+    const nucleo = await this.nucleoRepository.findById(nucleoId, userId);
+    if (!nucleo) {
+      throw new NotFoundException("Núcleo", nucleoId);
     }
 
-    // Verificar se o núcleo pertence ao usuário
-    const nucleoCheck = await pool.query(
-      `SELECT id FROM nucleos WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
-      [command.nucleoId, userId],
-    );
-
-    if (nucleoCheck.rows.length === 0) {
-      throw new Error("Núcleo não encontrado ou sem permissão");
+    // ✅ Validar e converter tipo
+    if (!isTipoBloco(tipo)) {
+      throw new Error(`Tipo de bloco inválido: ${tipo}`);
     }
 
-    // Buscar próxima posição
-    const posicao =
-      command.posicao ?? (await this.getNextPosition(command.nucleoId));
+    //  Garantir que posicao seja number (fallback para 0)
+    const posicaoFinal = posicao !== undefined ? posicao : 0;
 
+    // Usar Bloco.create com tipos corretos
     const bloco = Bloco.create({
-      nucleoId: command.nucleoId,
-      tipo: command.tipo,
-      titulo: command.titulo,
-      posicao,
-      configuracoes: command.configuracoes || {},
+      nucleoId,
+      tipo: tipo as TipoBloco,
+      titulo: titulo || null,
+      posicao: posicaoFinal,
+      configuracoes: configuracoes || {},
     });
 
     await this.blocoRepository.save(bloco);
@@ -50,17 +52,6 @@ export class CreateBlocoHandler {
       configuracoes: bloco.configuracoes,
       createdAt: bloco.createdAt.toISOString(),
       updatedAt: bloco.updatedAt.toISOString(),
-      deletedAt: bloco.deletedAt?.toISOString() || null,
     };
-  }
-
-  private async getNextPosition(nucleoId: string): Promise<number> {
-    const result = await pool.query(
-      `SELECT COALESCE(MAX(posicao), -1) + 1 as next_pos 
-       FROM blocos 
-       WHERE nucleo_id = $1 AND deleted_at IS NULL`,
-      [nucleoId],
-    );
-    return result.rows[0].next_pos;
   }
 }

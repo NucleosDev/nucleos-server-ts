@@ -1,130 +1,142 @@
 import { IColecaoRepository } from "../../../domain/repositories/IColecaoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { UpdateItemCommand } from "./UpdateItemCommand";
-import { ItemResponseDto } from "../../dto/colecao.dto";
-import { ItemValor } from "../../../domain/entities/ItemValor";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
+import { randomUUID } from "crypto";
 
 export class UpdateItemHandler {
-  constructor(
-    private readonly colecaoRepository: IColecaoRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly colecaoRepository: IColecaoRepository) {}
 
-  async execute(command: UpdateItemCommand): Promise<ItemResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+  async execute(command: UpdateItemCommand): Promise<any> {
+    const { id, userId, valores } = command;
 
-    const item = await this.colecaoRepository.findItemById(command.id);
-    if (!item) {
-      throw new Error("Item não encontrado");
-    }
-
-    // Verificar permissão via coleção
-    const colecaoCheck = await pool.query(
-      `SELECT n.user_id 
-       FROM itens i
+    // Verificar permissão
+    const check = await pool.query(
+      `SELECT n.user_id FROM itens i
        JOIN colecoes c ON i.colecao_id = c.id
-       JOIN blocos b ON c.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
+       JOIN blocos b ON b.id = c.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
        WHERE i.id = $1`,
-      [command.id],
+      [id],
     );
 
-    if (colecaoCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Item", id);
     }
+
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException("Sem permissão para editar este item");
+    }
+
+    const itemResult = await pool.query(
+      `SELECT colecao_id FROM itens WHERE id = $1`,
+      [id],
+    );
+    const colecaoId = itemResult.rows[0].colecao_id;
 
     // Buscar campos da coleção
-    const campos = await this.colecaoRepository.findAllCamposByColecaoId(
-      item.colecaoId,
+    const campos = await pool.query(
+      `SELECT id, tipo_campo FROM campos WHERE colecao_id = $1`,
+      [colecaoId],
     );
 
-    // Atualizar valores
     const valoresMap: Record<string, any> = {};
 
-    for (const campo of campos) {
-      const valor = command.valores[campo.id];
-      let itemValor = await this.colecaoRepository.findItemValorByItemAndCampo(
-        command.id,
-        campo.id,
+    for (const campo of campos.rows) {
+      const valor = valores[campo.id];
+      valoresMap[campo.id] = valor;
+
+      // Verificar se já existe valor
+      const existing = await pool.query(
+        `SELECT id FROM item_valores WHERE item_id = $1 AND campo_id = $2`,
+        [id, campo.id],
       );
 
-      if (itemValor) {
-        // Atualizar valor existente
-        switch (campo.tipoCampo) {
+      if (existing.rows.length > 0) {
+        // Atualizar
+        switch (campo.tipo_campo) {
           case "texto":
-            itemValor.updateValorTexto(valor?.toString() || null);
+            await pool.query(
+              `UPDATE item_valores SET valor_texto = $1 WHERE item_id = $2 AND campo_id = $3`,
+              [valor?.toString() || null, id, campo.id],
+            );
             break;
           case "numero":
-            itemValor.updateValorNumerico(
-              valor !== undefined ? Number(valor) : null,
+            await pool.query(
+              `UPDATE item_valores SET valor_numerico = $1 WHERE item_id = $2 AND campo_id = $3`,
+              [valor !== undefined ? Number(valor) : null, id, campo.id],
             );
             break;
           case "data":
-            itemValor.updateValorData(valor ? new Date(valor) : null);
+            await pool.query(
+              `UPDATE item_valores SET valor_data = $1 WHERE item_id = $2 AND campo_id = $3`,
+              [valor ? new Date(valor) : null, id, campo.id],
+            );
             break;
           case "booleano":
-            itemValor.updateValorBooleano(
-              valor !== undefined ? Boolean(valor) : null,
+            await pool.query(
+              `UPDATE item_valores SET valor_booleano = $1 WHERE item_id = $2 AND campo_id = $3`,
+              [valor !== undefined ? Boolean(valor) : null, id, campo.id],
             );
             break;
         }
-        await this.colecaoRepository.updateItemValor(itemValor);
       } else {
-        // Criar novo valor
-        let newItemValor: any;
-        switch (campo.tipoCampo) {
+        // Criar novo
+        const valorId = randomUUID();
+        switch (campo.tipo_campo) {
           case "texto":
-            newItemValor = ItemValor.create({
-              itemId: command.id,
-              campoId: campo.id,
-              valorTexto: valor?.toString() || null,
-            });
+            await pool.query(
+              `INSERT INTO item_valores (id, item_id, campo_id, valor_texto, created_at)
+               VALUES ($1, $2, $3, $4, NOW())`,
+              [valorId, id, campo.id, valor?.toString() || null],
+            );
             break;
           case "numero":
-            newItemValor = ItemValor.create({
-              itemId: command.id,
-              campoId: campo.id,
-              valorNumerico: valor !== undefined ? Number(valor) : null,
-            });
+            await pool.query(
+              `INSERT INTO item_valores (id, item_id, campo_id, valor_numerico, created_at)
+               VALUES ($1, $2, $3, $4, NOW())`,
+              [
+                valorId,
+                id,
+                campo.id,
+                valor !== undefined ? Number(valor) : null,
+              ],
+            );
             break;
           case "data":
-            newItemValor = ItemValor.create({
-              itemId: command.id,
-              campoId: campo.id,
-              valorData: valor ? new Date(valor) : null,
-            });
+            await pool.query(
+              `INSERT INTO item_valores (id, item_id, campo_id, valor_data, created_at)
+               VALUES ($1, $2, $3, $4, NOW())`,
+              [valorId, id, campo.id, valor ? new Date(valor) : null],
+            );
             break;
           case "booleano":
-            newItemValor = ItemValor.create({
-              itemId: command.id,
-              campoId: campo.id,
-              valorBooleano: valor !== undefined ? Boolean(valor) : null,
-            });
+            await pool.query(
+              `INSERT INTO item_valores (id, item_id, campo_id, valor_booleano, created_at)
+               VALUES ($1, $2, $3, $4, NOW())`,
+              [
+                valorId,
+                id,
+                campo.id,
+                valor !== undefined ? Boolean(valor) : null,
+              ],
+            );
             break;
-          default:
-            newItemValor = ItemValor.create({
-              itemId: command.id,
-              campoId: campo.id,
-              valorTexto: valor?.toString() || null,
-            });
         }
-        await this.colecaoRepository.saveItemValor(newItemValor);
       }
-      valoresMap[campo.id] = valor;
     }
 
-    await this.colecaoRepository.updateItem(item);
+    await pool.query(`UPDATE itens SET updated_at = NOW() WHERE id = $1`, [id]);
 
     return {
-      id: item.id,
-      colecaoId: item.colecaoId,
+      id,
+      colecaoId,
       valores: valoresMap,
-      createdAt: item.createdAt.toISOString(),
-      updatedAt: item.updatedAt.toISOString(),
+      createdAt: (
+        await pool.query(`SELECT created_at FROM itens WHERE id = $1`, [id])
+      ).rows[0].created_at,
+      updatedAt: new Date().toISOString(),
     };
   }
 }

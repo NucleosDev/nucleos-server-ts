@@ -1,3 +1,4 @@
+// application/commands/nucleos/UpdateNucleoHandler.ts
 import { INucleoRepository } from "../../../domain/repositories/INucleoRepository";
 import { UpdateNucleoCommand } from "./UpdateNucleoCommand";
 import { NucleoResponseDto } from "../../dto/nucleo.dto";
@@ -5,13 +6,9 @@ import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class UpdateNucleoHandler {
-  constructor(
-    private readonly nucleoRepository: INucleoRepository,
-    // ✅ REMOVA o CurrentUserService
-  ) {}
+  constructor(private readonly nucleoRepository: INucleoRepository) {}
 
   async execute(command: UpdateNucleoCommand): Promise<NucleoResponseDto> {
-    // ✅ USA O userId DO COMMAND
     const {
       id,
       userId,
@@ -33,7 +30,6 @@ export class UpdateNucleoHandler {
       throw new NotFoundException("Núcleo", id);
     }
 
-    // Verificar se o usuário é o dono
     if (nucleo.userId !== userId) {
       throw new ForbiddenException(
         "Você não tem permissão para editar este núcleo",
@@ -58,9 +54,9 @@ export class UpdateNucleoHandler {
       corDestaque: nucleo.corDestaque,
       imagemCapa: nucleo.imagemCapa,
       iconId: nucleo.iconId,
-      createdAt: nucleo.createdAt.toISOString(),
-      updatedAt: nucleo.updatedAt.toISOString(),
-      deletedAt: nucleo.deletedAt?.toISOString() || null,
+      createdAt: nucleo.createdAt,
+      updatedAt: nucleo.updatedAt,
+      deletedAt: nucleo.deletedAt,
     };
   }
 }

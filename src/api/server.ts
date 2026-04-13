@@ -173,7 +173,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 //
 const limiter = rateLimit({
   windowMs: Number(env.RATE_LIMIT_WINDOW_MS) || 900000,
-  max: Number(env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  max: Number(env.RATE_LIMIT_MAX_REQUESTS) || 100000,
   skip: (req) => req.method === "OPTIONS", // Skip preflight requests
   standardHeaders: true,
   legacyHeaders: false,

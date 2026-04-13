@@ -1,6 +1,6 @@
+// src/api/routes/listas.routes.ts
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.middleware";
-import { AuthRequest } from "../middlewares/auth.middleware";
+import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
 import { ListasController } from "../controllers/v1/ListasController";
 import { CreateListaHandler } from "../../application/commands/listas/CreateListaHandler";
 import { UpdateListaHandler } from "../../application/commands/listas/UpdateListaHandler";
@@ -15,54 +15,25 @@ import { CreateCategoriaHandler } from "../../application/commands/listas/Create
 import { DeleteCategoriaHandler } from "../../application/commands/listas/DeleteCategoriaHandler";
 import { GetCategoriasByListaHandler } from "../../application/queries/listas/GetCategoriasByListaHandler";
 import { ListaRepository } from "../../infrastructure/persistence/repositories/ListaRepository";
-import { CurrentUserService } from "../../infrastructure/services/current-user.service";
 
 const listaRepository = new ListaRepository();
-const currentUserService = new CurrentUserService();
 
-// Lista
-const createListaHandler = new CreateListaHandler(
-  listaRepository,
-  currentUserService,
-);
-const updateListaHandler = new UpdateListaHandler(
-  listaRepository,
-  currentUserService,
-);
-const deleteListaHandler = new DeleteListaHandler(
-  listaRepository,
-  currentUserService,
-);
+// Lista - Handlers SEM CurrentUserService
+const createListaHandler = new CreateListaHandler(listaRepository);
+const updateListaHandler = new UpdateListaHandler(listaRepository);
+const deleteListaHandler = new DeleteListaHandler(listaRepository);
 const getListasByBlocoHandler = new GetListasByBlocoHandler(listaRepository);
 
-// Item
-const createItemHandler = new CreateItemListaHandler(
-  listaRepository,
-  currentUserService,
-);
-const updateItemHandler = new UpdateItemListaHandler(
-  listaRepository,
-  currentUserService,
-);
-const toggleItemHandler = new ToggleItemCheckedHandler(
-  listaRepository,
-  currentUserService,
-);
-const deleteItemHandler = new DeleteItemListaHandler(
-  listaRepository,
-  currentUserService,
-);
+// Item - Handlers SEM CurrentUserService
+const createItemHandler = new CreateItemListaHandler(listaRepository);
+const updateItemHandler = new UpdateItemListaHandler(listaRepository);
+const toggleItemHandler = new ToggleItemCheckedHandler(listaRepository);
+const deleteItemHandler = new DeleteItemListaHandler(listaRepository);
 const getItemsByListaHandler = new GetItemsByListaHandler(listaRepository);
 
-// Categoria
-const createCategoriaHandler = new CreateCategoriaHandler(
-  listaRepository,
-  currentUserService,
-);
-const deleteCategoriaHandler = new DeleteCategoriaHandler(
-  listaRepository,
-  currentUserService,
-);
+// Categoria - Handlers SEM CurrentUserService
+const createCategoriaHandler = new CreateCategoriaHandler(listaRepository);
+const deleteCategoriaHandler = new DeleteCategoriaHandler(listaRepository);
 const getCategoriasByListaHandler = new GetCategoriasByListaHandler(
   listaRepository,
 );
@@ -84,7 +55,7 @@ const listasController = new ListasController(
 
 export const listasRoutes = Router();
 
-// ========== LISTA ==========
+//  LISTA
 listasRoutes.get("/bloco/:blocoId", authenticate, (req, res, next) => {
   listasController.listByBloco(req as AuthRequest, res).catch(next);
 });
@@ -101,7 +72,7 @@ listasRoutes.delete("/:id", authenticate, (req, res, next) => {
   listasController.deleteLista(req as AuthRequest, res).catch(next);
 });
 
-// ========== ITEM ==========
+//  ITEM
 listasRoutes.get("/:listaId/items", authenticate, (req, res, next) => {
   listasController.getItemsByLista(req as AuthRequest, res).catch(next);
 });
@@ -122,7 +93,7 @@ listasRoutes.delete("/items/:id", authenticate, (req, res, next) => {
   listasController.deleteItem(req as AuthRequest, res).catch(next);
 });
 
-// ========== CATEGORIA ==========
+//  CATEGORIA
 listasRoutes.get("/:listaId/categorias", authenticate, (req, res, next) => {
   listasController.getCategoriasByLista(req as AuthRequest, res).catch(next);
 });

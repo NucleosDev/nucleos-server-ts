@@ -6,7 +6,7 @@ import { ItemValor } from "../../../domain/entities/ItemValor";
 import { IColecaoRepository } from "../../../domain/repositories/IColecaoRepository";
 
 export class ColecaoRepository implements IColecaoRepository {
-  // ========== COLEÇÃO ==========
+  //  COLEÇÃO
   async saveColecao(colecao: Colecao): Promise<void> {
     await pool.query(
       `INSERT INTO colecoes (id, bloco_id, nome, created_at, updated_at)
@@ -83,7 +83,7 @@ export class ColecaoRepository implements IColecaoRepository {
     }
   }
 
-  // ========== CAMPO ==========
+  //  CAMPO
   async saveCampo(campo: Campo): Promise<void> {
     await pool.query(
       `INSERT INTO campos (id, colecao_id, nome, tipo_campo, created_at, updated_at)
@@ -128,7 +128,7 @@ export class ColecaoRepository implements IColecaoRepository {
     await pool.query(`DELETE FROM campos WHERE id = $1`, [id]);
   }
 
-  // ========== ITEM ==========
+  //  ITEM
   async saveItem(item: Item): Promise<void> {
     await pool.query(
       `INSERT INTO itens (id, colecao_id, created_at, updated_at)
@@ -175,7 +175,7 @@ export class ColecaoRepository implements IColecaoRepository {
     }
   }
 
-  // ========== ITEM VALOR ==========
+  //  ITEM VALOR
   async saveItemValor(itemValor: ItemValor): Promise<void> {
     await pool.query(
       `INSERT INTO item_valores (id, item_id, campo_id, valor_texto, valor_numerico, valor_data, valor_booleano)
@@ -240,7 +240,7 @@ export class ColecaoRepository implements IColecaoRepository {
     await pool.query(`DELETE FROM item_valores WHERE item_id = $1`, [itemId]);
   }
 
-  // ========== MAPPERS ==========
+  //  MAPPERS
   private mapToColecaoEntity(row: any): Colecao {
     return Colecao.reconstitute({
       id: row.id,

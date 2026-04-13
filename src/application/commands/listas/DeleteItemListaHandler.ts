@@ -1,39 +1,36 @@
 import { IListaRepository } from "../../../domain/repositories/IListaRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { DeleteItemListaCommand } from "./DeleteItemListaCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class DeleteItemListaHandler {
-  constructor(
-    private readonly listaRepository: IListaRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly listaRepository: IListaRepository) {}
 
   async execute(command: DeleteItemListaCommand): Promise<void> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+    const { id, userId } = command;
 
-    const item = await this.listaRepository.findItemById(command.id);
-    if (!item) {
-      throw new Error("Item não encontrado");
-    }
-
-    // Verificar permissão via lista
-    const listaCheck = await pool.query(
-      `SELECT n.user_id 
-       FROM listas l
-       JOIN blocos b ON l.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
-       WHERE l.id = $1`,
-      [item.listaId],
+    // Verificar permissão
+    const check = await pool.query(
+      `SELECT n.user_id FROM itens_lista i
+       JOIN listas l ON l.id = i.lista_id
+       JOIN blocos b ON b.id = l.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
+       WHERE i.id = $1 AND i.deleted_at IS NULL`,
+      [id],
     );
 
-    if (listaCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Item", id);
     }
 
-    await this.listaRepository.deleteItem(command.id);
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException("Sem permissão para deletar este item");
+    }
+
+    await pool.query(
+      `UPDATE itens_lista SET deleted_at = NOW() WHERE id = $1`,
+      [id],
+    );
   }
 }

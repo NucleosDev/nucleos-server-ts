@@ -44,16 +44,23 @@ export class ColecoesController {
     private readonly getItemsByColecaoHandler: GetItemsByColecaoHandler,
   ) {}
 
-  // ========== COLEÇÃO ==========
+  //  COLEÇÃO
   async listByBloco(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const { blocoId } = req.params;
-      if (!blocoId || typeof blocoId !== "string") {
-        return res
-          .status(400)
-          .json({ success: false, message: "ID do bloco inválido" });
+      // 🔥 userId vem do token (usuário autenticado)
+      const userId = req.user?.id;
+      const blocoIdParam = req.params.blocoId;
+      const blocoId =
+        typeof blocoIdParam === "string" ? blocoIdParam : undefined;
+
+      if (!userId || !blocoId) {
+        return res.status(400).json({
+          success: false,
+          message: "userId e blocoId são obrigatórios",
+        });
       }
-      const query = new GetColecoesByBlocoQuery(blocoId);
+
+      const query = new GetColecoesByBlocoQuery(userId, blocoId);
       const result = await this.getColecoesByBlocoHandler.execute(query);
       return res.json({ success: true, data: result });
     } catch (error: any) {
@@ -64,6 +71,12 @@ export class ColecoesController {
   async createColecao(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { blocoId, nome } = req.body;
+      const userId = req.user?.id;
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
       if (!blocoId || typeof blocoId !== "string") {
         return res
           .status(400)
@@ -74,7 +87,7 @@ export class ColecoesController {
           .status(400)
           .json({ success: false, message: "Nome é obrigatório" });
       }
-      const command = new CreateColecaoCommand(blocoId, nome);
+      const command = new CreateColecaoCommand(userId, blocoId, nome);
       const result = await this.createColecaoHandler.execute(command);
       return res.status(201).json({ success: true, data: result });
     } catch (error: any) {
@@ -100,10 +113,16 @@ export class ColecoesController {
   async deleteColecao(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
       if (!id || typeof id !== "string") {
         return res.status(400).json({ success: false, message: "ID inválido" });
       }
-      const command = new DeleteColecaoCommand(id);
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
+      const command = new DeleteColecaoCommand(id, userId);
       await this.deleteColecaoHandler.execute(command);
       return res.status(204).send();
     } catch (error: any) {
@@ -111,16 +130,22 @@ export class ColecoesController {
     }
   }
 
-  // ========== CAMPO ==========
+  //  CAMPO
   async getCamposByColecao(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { colecaoId } = req.params;
+      const userId = req.user?.id;
       if (!colecaoId || typeof colecaoId !== "string") {
         return res
           .status(400)
           .json({ success: false, message: "ID da coleção inválido" });
       }
-      const query = new GetCamposByColecaoQuery(colecaoId);
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
+      const query = new GetCamposByColecaoQuery(colecaoId, userId);
       const result = await this.getCamposByColecaoHandler.execute(query);
       return res.json({ success: true, data: result });
     } catch (error: any) {
@@ -131,6 +156,12 @@ export class ColecoesController {
   async createCampo(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { colecaoId, nome, tipoCampo } = req.body;
+      const userId = req.user?.id;
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
       if (!colecaoId || typeof colecaoId !== "string") {
         return res
           .status(400)
@@ -146,7 +177,12 @@ export class ColecoesController {
           .status(400)
           .json({ success: false, message: "Tipo do campo é obrigatório" });
       }
-      const command = new CreateCampoCommand(colecaoId, nome, tipoCampo as any);
+      const command = new CreateCampoCommand(
+        userId,
+        colecaoId,
+        nome,
+        tipoCampo as any,
+      );
       const result = await this.createCampoHandler.execute(command);
       return res.status(201).json({ success: true, data: result });
     } catch (error: any) {
@@ -172,10 +208,16 @@ export class ColecoesController {
   async deleteCampo(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
       if (!id || typeof id !== "string") {
         return res.status(400).json({ success: false, message: "ID inválido" });
       }
-      const command = new DeleteCampoCommand(id);
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
+      const command = new DeleteCampoCommand(id, userId);
       await this.deleteCampoHandler.execute(command);
       return res.status(204).send();
     } catch (error: any) {
@@ -183,16 +225,22 @@ export class ColecoesController {
     }
   }
 
-  // ========== ITEM ==========
+  //  ITEM
   async getItemsByColecao(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { colecaoId } = req.params;
+      const userId = req.user?.id;
       if (!colecaoId || typeof colecaoId !== "string") {
         return res
           .status(400)
           .json({ success: false, message: "ID da coleção inválido" });
       }
-      const query = new GetItemsByColecaoQuery(colecaoId);
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
+      const query = new GetItemsByColecaoQuery(colecaoId, userId);
       const result = await this.getItemsByColecaoHandler.execute(query);
       return res.json({ success: true, data: result });
     } catch (error: any) {
@@ -203,6 +251,12 @@ export class ColecoesController {
   async createItem(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { colecaoId, valores } = req.body;
+      const userId = req.user?.id;
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
       if (!colecaoId || typeof colecaoId !== "string") {
         return res
           .status(400)
@@ -213,7 +267,7 @@ export class ColecoesController {
           .status(400)
           .json({ success: false, message: "Valores são obrigatórios" });
       }
-      const command = new CreateItemCommand(colecaoId, valores);
+      const command = new CreateItemCommand(userId, colecaoId, valores);
       const result = await this.createItemHandler.execute(command);
       return res.status(201).json({ success: true, data: result });
     } catch (error: any) {
@@ -225,15 +279,21 @@ export class ColecoesController {
     try {
       const { id } = req.params;
       const { valores } = req.body;
+      const userId = req.user?.id;
       if (!id || typeof id !== "string") {
         return res.status(400).json({ success: false, message: "ID inválido" });
+      }
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
       }
       if (!valores || typeof valores !== "object") {
         return res
           .status(400)
           .json({ success: false, message: "Valores são obrigatórios" });
       }
-      const command = new UpdateItemCommand(id, valores);
+      const command = new UpdateItemCommand(id, userId, valores);
       const result = await this.updateItemHandler.execute(command);
       return res.json({ success: true, data: result });
     } catch (error: any) {
@@ -244,10 +304,16 @@ export class ColecoesController {
   async deleteItem(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
       if (!id || typeof id !== "string") {
         return res.status(400).json({ success: false, message: "ID inválido" });
       }
-      const command = new DeleteItemCommand(id);
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
+      const command = new DeleteItemCommand(id, userId);
       await this.deleteItemHandler.execute(command);
       return res.status(204).send();
     } catch (error: any) {

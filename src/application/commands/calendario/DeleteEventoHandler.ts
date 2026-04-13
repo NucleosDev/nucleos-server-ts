@@ -1,35 +1,23 @@
 import { ICalendarioRepository } from "../../../domain/repositories/ICalendarioRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
+import { INucleoRepository } from "../../../domain/repositories/INucleoRepository";
 import { DeleteEventoCommand } from "./DeleteEventoCommand";
-import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
 
 export class DeleteEventoHandler {
   constructor(
-    private readonly calendarioRepository: ICalendarioRepository,
-    private readonly currentUserService: ICurrentUserService,
+    private readonly eventoRepository: ICalendarioRepository,
+    private readonly nucleoRepository: INucleoRepository,
   ) {}
 
   async execute(command: DeleteEventoCommand): Promise<void> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+    const { userId, eventoId, nucleoId } = command;
 
-    const evento = await this.calendarioRepository.findById(command.id);
-    if (!evento) {
-      throw new Error("Evento não encontrado");
-    }
+    const nucleo = await this.nucleoRepository.findById(nucleoId, userId);
+    if (!nucleo) throw new NotFoundException("Núcleo", nucleoId);
 
-    // Verificar permissão via núcleo
-    const nucleoCheck = await pool.query(
-      `SELECT user_id FROM nucleos WHERE id = $1 AND deleted_at IS NULL`,
-      [evento.nucleoId],
-    );
+    const evento = await this.eventoRepository.findById(eventoId, nucleoId);
+    if (!evento) throw new NotFoundException("Evento", eventoId);
 
-    if (nucleoCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
-    }
-
-    await this.calendarioRepository.delete(command.id);
+    await this.eventoRepository.delete(eventoId, nucleoId);
   }
 }

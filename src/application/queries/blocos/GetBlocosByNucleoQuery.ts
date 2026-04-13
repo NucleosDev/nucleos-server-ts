@@ -1,3 +1,6 @@
 export class GetBlocosByNucleoQuery {
-  constructor(public readonly nucleoId: string) {}
+  constructor(
+    public readonly nucleoId: string,
+    public readonly userId: string,
+  ) {}
 }

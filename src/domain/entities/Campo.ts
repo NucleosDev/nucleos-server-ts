@@ -5,8 +5,8 @@ export type TipoCampo =
   | "numero"
   | "data"
   | "booleano"
-  | "arquivo"
   | "select"
+  | "arquivo"
   | "relacao";
 
 export interface CampoProps {

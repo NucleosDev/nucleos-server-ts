@@ -4,13 +4,9 @@ import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class DeleteNucleoHandler {
-  constructor(
-    private readonly nucleoRepository: INucleoRepository,
-    // ✅ REMOVA o CurrentUserService
-  ) {}
+  constructor(private readonly nucleoRepository: INucleoRepository) {}
 
   async execute(command: DeleteNucleoCommand): Promise<void> {
-    // ✅ USA O userId DO COMMAND
     const { id, userId } = command;
 
     if (!userId) {
@@ -23,7 +19,6 @@ export class DeleteNucleoHandler {
       throw new NotFoundException("Núcleo", id);
     }
 
-    // Verificar se o usuário é o dono
     if (nucleo.userId !== userId) {
       throw new ForbiddenException(
         "Você não tem permissão para deletar este núcleo",

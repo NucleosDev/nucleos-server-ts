@@ -1,4 +1,4 @@
-import { TipoLista } from "../../domain/entities/Lista";
+export type TipoLista = "generica" | "compras" | "financeiro";
 
 export interface CreateListaDto {
   blocoId: string;
@@ -40,6 +40,8 @@ export interface ItemListaResponseDto {
   id: string;
   listaId: string;
   categoriaId: string | null;
+  categoriaNome?: string | null;
+  categoriaCor?: string | null;
   nome: string;
   quantidade: number;
   valorUnitario: number | null;
@@ -55,7 +57,7 @@ export interface CreateCategoriaDto {
   cor?: string;
 }
 
-export interface CategoriaResponseDto {
+export interface CategoriaResponseDto { 
   id: string;
   listaId: string;
   nome: string;

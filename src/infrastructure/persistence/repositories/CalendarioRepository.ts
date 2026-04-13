@@ -26,71 +26,49 @@ export class CalendarioRepository implements ICalendarioRepository {
     );
   }
 
-  async findById(id: string): Promise<CalendarioEvento | null> {
+  async findById(
+    id: string,
+    nucleoId: string,
+  ): Promise<CalendarioEvento | null> {
     const result = await pool.query(
-      `SELECT * FROM calendario_eventos WHERE id = $1`,
-      [id],
+      `SELECT * FROM calendario_eventos WHERE id = $1 AND nucleo_id = $2`,
+      [id, nucleoId],
     );
     if (result.rows.length === 0) return null;
-    return this.mapToEntity(result.rows[0]);
+    return CalendarioEvento.reconstitute(result.rows[0]);
   }
 
-  async findAllByNucleoId(nucleoId: string): Promise<CalendarioEvento[]> {
-    const result = await pool.query(
-      `SELECT * FROM calendario_eventos 
-       WHERE nucleo_id = $1 
-       ORDER BY data_evento ASC`,
-      [nucleoId],
-    );
-    return result.rows.map((row) => this.mapToEntity(row));
-  }
-
-  async findAllByDateRange(
+  async findAllByNucleoId(
     nucleoId: string,
-    startDate: Date,
-    endDate: Date,
+    startDate?: Date,
+    endDate?: Date,
   ): Promise<CalendarioEvento[]> {
-    const result = await pool.query(
-      `SELECT * FROM calendario_eventos 
-       WHERE nucleo_id = $1 
-         AND data_evento >= $2 
-         AND data_evento <= $3
-       ORDER BY data_evento ASC`,
-      [nucleoId, startDate, endDate],
-    );
-    return result.rows.map((row) => this.mapToEntity(row));
+    let query = `SELECT * FROM calendario_eventos WHERE nucleo_id = $1`;
+    const params: any[] = [nucleoId];
+    let paramIndex = 2;
+
+    if (startDate) {
+      query += ` AND data_evento >= $${paramIndex++}`;
+      params.push(startDate);
+    }
+    if (endDate) {
+      query += ` AND data_evento <= $${paramIndex++}`;
+      params.push(endDate);
+    }
+    query += ` ORDER BY data_evento ASC`;
+
+    const result = await pool.query(query, params);
+    return result.rows.map((row) => CalendarioEvento.reconstitute(row));
   }
 
   async update(evento: CalendarioEvento): Promise<void> {
+    await this.save(evento); // save já faz upsert
+  }
+
+  async delete(id: string, nucleoId: string): Promise<void> {
     await pool.query(
-      `UPDATE calendario_eventos 
-       SET titulo = $1, descricao = $2, data_evento = $3, duracao_minutos = $4, updated_at = $5
-       WHERE id = $6`,
-      [
-        evento.titulo,
-        evento.descricao,
-        evento.dataEvento,
-        evento.duracaoMinutos,
-        evento.updatedAt,
-        evento.id,
-      ],
+      `DELETE FROM calendario_eventos WHERE id = $1 AND nucleo_id = $2`,
+      [id, nucleoId],
     );
-  }
-
-  async delete(id: string): Promise<void> {
-    await pool.query(`DELETE FROM calendario_eventos WHERE id = $1`, [id]);
-  }
-
-  private mapToEntity(row: any): CalendarioEvento {
-    return CalendarioEvento.reconstitute({
-      id: row.id,
-      nucleoId: row.nucleo_id,
-      titulo: row.titulo,
-      descricao: row.descricao,
-      dataEvento: new Date(row.data_evento),
-      duracaoMinutos: row.duracao_minutos,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-    });
   }
 }

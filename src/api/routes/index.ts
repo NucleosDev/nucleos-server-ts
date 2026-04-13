@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authRoutes } from "./auth.routes";
-import { router as usersRoutes } from "./users.routes";  
+import { router as usersRoutes } from "./users.routes";
+console.log("🔥🔥🔥 INDEX.TS ESTÁ SENDO CARREGADO 🔥🔥🔥");
 
 import "express";
 
@@ -13,7 +14,7 @@ declare module "express-serve-static-core" {
 
 // Importações futuras (comentadas até implementar)
 import { nucleosRoutes } from "./nucleos.routes";
-import { blocosRoutes } from "./blocos.routes";
+import { router as blocosRoutes } from "./blocos.routes";
 import { colecoesRoutes } from "./colecoes.routes";
 // import { camposRoutes } from './campos.routes';
 // import { itensRoutes } from './itens.routes';
@@ -24,8 +25,8 @@ import { habitosRoutes } from "./habitos.routes";
 // import { gamificacaoRoutes } from './gamificacao.routes';
 // import { progressRoutes } from './progress.routes';
 // import { notificationsRoutes } from './notifications.routes';
-// import { plansRoutes } from './plans.routes';
-// import { timersRoutes } from './timers.routes';
+// import { planRoutes } from './plan.routes';
+// import { Router as Tim } from './timers.routes';
 import { calendarioRoutes } from "./calendario.routes";
 // import { insightsRoutes } from './insights.routes';
 // import { adminRoutes } from './admin.routes';
@@ -37,7 +38,7 @@ router.use("/Auth", authRoutes);
 
 // Rotas futuras (descomentar quando implementar os controllers)
 router.use("/nucleos", nucleosRoutes);
-router.use("/blocos", blocosRoutes);
+router.use("/", blocosRoutes);
 router.use("/colecoes", colecoesRoutes);
 // router.use('/campos', camposRoutes);
 // router.use('/itens', itensRoutes);
@@ -47,7 +48,7 @@ router.use("/listas", listasRoutes);
 router.use("/habitos", habitosRoutes);
 // router.use('/gamificacao', gamificacaoRoutes);
 // router.use('/progress', progressRoutes);
-router.use('/users', usersRoutes);
+router.use("/users", usersRoutes);
 // router.use('/notifications', notificationsRoutes);
 // router.use('/plans', plansRoutes);
 // router.use('/timers', timersRoutes);

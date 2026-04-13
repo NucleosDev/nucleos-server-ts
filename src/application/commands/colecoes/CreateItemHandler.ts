@@ -1,104 +1,113 @@
 import { Item } from "../../../domain/entities/Item";
 import { ItemValor } from "../../../domain/entities/ItemValor";
 import { IColecaoRepository } from "../../../domain/repositories/IColecaoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { CreateItemCommand } from "./CreateItemCommand";
-import { ItemResponseDto } from "../../dto/colecao.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { randomUUID } from "crypto";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class CreateItemHandler {
-  constructor(
-    private readonly colecaoRepository: IColecaoRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly colecaoRepository: IColecaoRepository) {}
 
-  async execute(command: CreateItemCommand): Promise<ItemResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+  async execute(command: CreateItemCommand): Promise<any> {
+    const { userId, colecaoId, valores } = command;
 
-    // Verificar permissão via coleção
-    const colecaoCheck = await pool.query(
-      `SELECT c.id, n.user_id 
-       FROM colecoes c
-       JOIN blocos b ON c.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
+    // Verificar permissão
+    const check = await pool.query(
+      `SELECT n.user_id FROM colecoes c
+       JOIN blocos b ON b.id = c.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
        WHERE c.id = $1`,
-      [command.colecaoId],
+      [colecaoId],
     );
 
-    if (colecaoCheck.rows.length === 0) {
-      throw new Error("Coleção não encontrada");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Coleção", colecaoId);
     }
 
-    if (colecaoCheck.rows[0].user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException(
+        "Sem permissão para adicionar itens nesta coleção",
+      );
     }
 
     // Buscar campos da coleção
-    const campos = await this.colecaoRepository.findAllCamposByColecaoId(
-      command.colecaoId,
+    const campos = await pool.query(
+      `SELECT id, tipo_campo FROM campos WHERE colecao_id = $1`,
+      [colecaoId],
     );
 
-    // Criar item
-    const item = Item.create({ colecaoId: command.colecaoId });
-    await this.colecaoRepository.saveItem(item);
+    const itemId = randomUUID();
+    const now = new Date();
 
-    // Criar valores para cada campo
+    await pool.query(
+      `INSERT INTO itens (id, colecao_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4)`,
+      [itemId, colecaoId, now, now],
+    );
+
     const valoresMap: Record<string, any> = {};
 
-    for (const campo of campos) {
-      const valor = command.valores[campo.id];
-      let itemValor: ItemValor;
+    for (const campo of campos.rows) {
+      const valor = valores[campo.id];
+      const valorId = randomUUID();
 
-      switch (campo.tipoCampo) {
+      switch (campo.tipo_campo) {
         case "texto":
-          itemValor = ItemValor.create({
-            itemId: item.id,
-            campoId: campo.id,
-            valorTexto: valor?.toString() || null,
-          });
+          await pool.query(
+            `INSERT INTO item_valores (id, item_id, campo_id, valor_texto, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [valorId, itemId, campo.id, valor?.toString() || null],
+          );
           break;
         case "numero":
-          itemValor = ItemValor.create({
-            itemId: item.id,
-            campoId: campo.id,
-            valorNumerico: valor !== undefined ? Number(valor) : null,
-          });
+          await pool.query(
+            `INSERT INTO item_valores (id, item_id, campo_id, valor_numerico, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [
+              valorId,
+              itemId,
+              campo.id,
+              valor !== undefined ? Number(valor) : null,
+            ],
+          );
           break;
         case "data":
-          itemValor = ItemValor.create({
-            itemId: item.id,
-            campoId: campo.id,
-            valorData: valor ? new Date(valor) : null,
-          });
+          await pool.query(
+            `INSERT INTO item_valores (id, item_id, campo_id, valor_data, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [valorId, itemId, campo.id, valor ? new Date(valor) : null],
+          );
           break;
         case "booleano":
-          itemValor = ItemValor.create({
-            itemId: item.id,
-            campoId: campo.id,
-            valorBooleano: valor !== undefined ? Boolean(valor) : null,
-          });
+          await pool.query(
+            `INSERT INTO item_valores (id, item_id, campo_id, valor_booleano, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [
+              valorId,
+              itemId,
+              campo.id,
+              valor !== undefined ? Boolean(valor) : null,
+            ],
+          );
           break;
         default:
-          itemValor = ItemValor.create({
-            itemId: item.id,
-            campoId: campo.id,
-            valorTexto: valor?.toString() || null,
-          });
+          await pool.query(
+            `INSERT INTO item_valores (id, item_id, campo_id, valor_texto, created_at)
+             VALUES ($1, $2, $3, $4, NOW())`,
+            [valorId, itemId, campo.id, valor?.toString() || null],
+          );
       }
-
-      await this.colecaoRepository.saveItemValor(itemValor);
       valoresMap[campo.id] = valor;
     }
 
     return {
-      id: item.id,
-      colecaoId: item.colecaoId,
+      id: itemId,
+      colecaoId,
       valores: valoresMap,
-      createdAt: item.createdAt.toISOString(),
-      updatedAt: item.updatedAt.toISOString(),
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     };
   }
 }

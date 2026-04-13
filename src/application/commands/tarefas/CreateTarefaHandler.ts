@@ -1,18 +1,18 @@
 import { Tarefa, PrioridadeTarefa } from "../../../domain/entities/Tarefa";
 import { ITarefaRepository } from "../../../domain/repositories/ITarefaRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { CreateTarefaCommand } from "./CreateTarefaCommand";
 import { TarefaResponseDto } from "../../dto/tarefa.dto";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class CreateTarefaHandler {
-  constructor(
-    private readonly tarefaRepository: ITarefaRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly tarefaRepository: ITarefaRepository) {}
 
   async execute(command: CreateTarefaCommand): Promise<TarefaResponseDto> {
-    const userId = this.currentUserService.getUserId();
+    const { userId, blocoId, titulo, descricao, prioridade, dataVencimento } =
+      command;
+
     if (!userId) {
       throw new Error("Usuário não autenticado");
     }
@@ -23,30 +23,28 @@ export class CreateTarefaHandler {
        FROM blocos b
        JOIN nucleos n ON b.nucleo_id = n.id
        WHERE b.id = $1 AND b.deleted_at IS NULL`,
-      [command.blocoId],
+      [blocoId],
     );
 
     if (blocoCheck.rows.length === 0) {
-      throw new Error("Bloco não encontrado");
+      throw new NotFoundException("Bloco", blocoId);
     }
 
     if (blocoCheck.rows[0].user_id !== userId) {
-      throw new Error("Acesso negado");
+      throw new ForbiddenException(
+        "Você não tem permissão para criar tarefas neste bloco",
+      );
     }
 
-    const posicao = await this.tarefaRepository.getNextPosition(
-      command.blocoId,
-    );
-
-    // 🔥 CORREÇÃO: Garantir que prioridade tenha um valor padrão
-    const prioridade: PrioridadeTarefa = command.prioridade || "media";
+    const posicao = await this.tarefaRepository.getNextPosition(blocoId);
+    const prioridadeFinal: PrioridadeTarefa = prioridade || "media";
 
     const tarefa = Tarefa.create({
-      blocoId: command.blocoId,
-      titulo: command.titulo,
-      descricao: command.descricao,
-      prioridade: prioridade,
-      dataVencimento: command.dataVencimento,
+      blocoId,
+      titulo,
+      descricao,
+      prioridade: prioridadeFinal,
+      dataVencimento,
       posicao,
     });
 

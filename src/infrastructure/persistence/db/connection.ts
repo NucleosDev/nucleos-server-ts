@@ -1,4 +1,4 @@
-import { Pool } from "pg";
+import { Pool, PoolClient } from "pg";
 import { env } from "../../../config/env";
 
 export const pool = new Pool({
@@ -12,6 +12,8 @@ export const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
+
+export type { PoolClient };
 
 // Logs
 pool.on("connect", () => {

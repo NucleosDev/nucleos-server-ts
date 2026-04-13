@@ -4,13 +4,9 @@ import { NucleoResponseDto } from "../../dto/nucleo.dto";
 import { Nucleo } from "../../../domain/entities/Nucleo";
 
 export class CreateNucleoHandler {
-  constructor(
-    private readonly nucleoRepository: INucleoRepository,
-    // ✅ REMOVA o CurrentUserService
-  ) {}
+  constructor(private readonly nucleoRepository: INucleoRepository) {}
 
   async execute(command: CreateNucleoCommand): Promise<NucleoResponseDto> {
-    // ✅ USA O userId DO COMMAND
     const { userId, nome, descricao, tipo, corDestaque, imagemCapa, iconId } =
       command;
 
@@ -21,11 +17,11 @@ export class CreateNucleoHandler {
     const nucleo = Nucleo.create({
       userId,
       nome,
-      descricao,
+      descricao: descricao || null,
       tipo: tipo || "pessoal",
-      corDestaque,
-      imagemCapa,
-      iconId,
+      corDestaque: corDestaque || null,
+      imagemCapa: imagemCapa || null,
+      iconId: iconId || null,
     });
 
     await this.nucleoRepository.save(nucleo);
@@ -39,9 +35,9 @@ export class CreateNucleoHandler {
       corDestaque: nucleo.corDestaque,
       imagemCapa: nucleo.imagemCapa,
       iconId: nucleo.iconId,
-      createdAt: nucleo.createdAt.toISOString(),
-      updatedAt: nucleo.updatedAt.toISOString(),
-      deletedAt: nucleo.deletedAt?.toISOString() || null,
+      createdAt: nucleo.createdAt,
+      updatedAt: nucleo.updatedAt,
+      deletedAt: nucleo.deletedAt,
     };
   }
 }

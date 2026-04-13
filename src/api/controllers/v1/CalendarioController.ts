@@ -1,3 +1,4 @@
+// src/api/controllers/v1/CalendarioController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { CreateEventoHandler } from "../../../application/commands/calendario/CreateEventoHandler";
@@ -13,29 +14,38 @@ import { GetEventoByIdQuery } from "../../../application/queries/calendario/GetE
 
 export class CalendarioController {
   constructor(
-    private readonly createEventoHandler: CreateEventoHandler,
-    private readonly updateEventoHandler: UpdateEventoHandler,
-    private readonly deleteEventoHandler: DeleteEventoHandler,
-    private readonly getEventosByNucleoHandler: GetEventosByNucleoHandler,
-    private readonly getEventoByIdHandler: GetEventoByIdHandler,
+    private readonly createHandler: CreateEventoHandler,
+    private readonly updateHandler: UpdateEventoHandler,
+    private readonly deleteHandler: DeleteEventoHandler,
+    private readonly listByNucleoHandler: GetEventosByNucleoHandler,
+    private readonly getByIdHandler: GetEventoByIdHandler,
   ) {}
 
-  async listByNucleo(req: AuthRequest, res: Response): Promise<Response> {
+  async getByNucleo(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const { nucleoId } = req.params;
-      const { start, end } = req.query;
-
-      if (!nucleoId || typeof nucleoId !== "string") {
+      const userId = req.user!.id;
+      const nucleoIdParam = req.params.nucleoId;
+      const nucleoId =
+        typeof nucleoIdParam === "string" ? nucleoIdParam : undefined;
+      if (!nucleoId) {
         return res
           .status(400)
-          .json({ success: false, message: "ID do núcleo inválido" });
+          .json({ success: false, message: "nucleoId é obrigatório" });
       }
 
-      const startDate = start ? new Date(start as string) : undefined;
-      const endDate = end ? new Date(end as string) : undefined;
+      const { start, end } = req.query;
+      const startStr = typeof start === "string" ? start : undefined;
+      const endStr = typeof end === "string" ? end : undefined;
+      const startDate = startStr ? new Date(startStr) : undefined;
+      const endDate = endStr ? new Date(endStr) : undefined;
 
-      const query = new GetEventosByNucleoQuery(nucleoId, startDate, endDate);
-      const result = await this.getEventosByNucleoHandler.execute(query);
+      const query = new GetEventosByNucleoQuery(
+        userId,
+        nucleoId,
+        startDate,
+        endDate,
+      );
+      const result = await this.listByNucleoHandler.execute(query);
       return res.json({ success: true, data: result });
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -44,14 +54,25 @@ export class CalendarioController {
 
   async getById(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const { id } = req.params;
+      const userId = req.user!.id;
+      const idParam = req.params.id;
+      const nucleoIdQuery = req.query.nucleoId;
 
-      if (!id || typeof id !== "string") {
-        return res.status(400).json({ success: false, message: "ID inválido" });
+      const eventoId = typeof idParam === "string" ? idParam : undefined;
+      const nucleoId =
+        typeof nucleoIdQuery === "string" ? nucleoIdQuery : undefined;
+
+      if (!eventoId || !nucleoId) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "ID do evento e nucleoId são obrigatórios",
+          });
       }
 
-      const query = new GetEventoByIdQuery(id);
-      const result = await this.getEventoByIdHandler.execute(query);
+      const query = new GetEventoByIdQuery(userId, eventoId, nucleoId);
+      const result = await this.getByIdHandler.execute(query);
       return res.json({ success: true, data: result });
     } catch (error: any) {
       return res.status(404).json({ success: false, message: error.message });
@@ -60,33 +81,28 @@ export class CalendarioController {
 
   async create(req: AuthRequest, res: Response): Promise<Response> {
     try {
+      const userId = req.user!.id;
       const { nucleoId, titulo, descricao, dataEvento, duracaoMinutos } =
         req.body;
 
-      if (!nucleoId || typeof nucleoId !== "string") {
+      if (!nucleoId || !titulo || !dataEvento) {
         return res
           .status(400)
-          .json({ success: false, message: "NucleoId inválido" });
-      }
-      if (!titulo || typeof titulo !== "string") {
-        return res
-          .status(400)
-          .json({ success: false, message: "Título é obrigatório" });
-      }
-      if (!dataEvento) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Data do evento é obrigatória" });
+          .json({
+            success: false,
+            message: "nucleoId, titulo e dataEvento são obrigatórios",
+          });
       }
 
       const command = new CreateEventoCommand(
+        userId,
         nucleoId,
         titulo,
         new Date(dataEvento),
         descricao,
         duracaoMinutos,
       );
-      const result = await this.createEventoHandler.execute(command);
+      const result = await this.createHandler.execute(command);
       return res.status(201).json({ success: true, data: result });
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -95,21 +111,31 @@ export class CalendarioController {
 
   async update(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const { id } = req.params;
-      const { titulo, descricao, dataEvento, duracaoMinutos } = req.body;
+      const userId = req.user!.id;
+      const idParam = req.params.id;
+      const { nucleoId, titulo, descricao, dataEvento, duracaoMinutos } =
+        req.body;
 
-      if (!id || typeof id !== "string") {
-        return res.status(400).json({ success: false, message: "ID inválido" });
+      const eventoId = typeof idParam === "string" ? idParam : undefined;
+      if (!eventoId || !nucleoId) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "ID do evento e nucleoId são obrigatórios",
+          });
       }
 
       const command = new UpdateEventoCommand(
-        id,
+        userId,
+        eventoId,
+        nucleoId,
         titulo,
         descricao,
         dataEvento ? new Date(dataEvento) : undefined,
         duracaoMinutos,
       );
-      const result = await this.updateEventoHandler.execute(command);
+      const result = await this.updateHandler.execute(command);
       return res.json({ success: true, data: result });
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -118,14 +144,22 @@ export class CalendarioController {
 
   async delete(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const { id } = req.params;
+      const userId = req.user!.id;
+      const idParam = req.params.id;
+      const { nucleoId } = req.body;
 
-      if (!id || typeof id !== "string") {
-        return res.status(400).json({ success: false, message: "ID inválido" });
+      const eventoId = typeof idParam === "string" ? idParam : undefined;
+      if (!eventoId || !nucleoId) {
+        return res
+          .status(400)
+          .json({
+            success: false,
+            message: "ID do evento e nucleoId são obrigatórios",
+          });
       }
 
-      const command = new DeleteEventoCommand(id);
-      await this.deleteEventoHandler.execute(command);
+      const command = new DeleteEventoCommand(userId, eventoId, nucleoId);
+      await this.deleteHandler.execute(command);
       return res.status(204).send();
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });

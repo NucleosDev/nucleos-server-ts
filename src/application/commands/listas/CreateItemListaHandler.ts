@@ -1,63 +1,68 @@
-import { ItemLista } from "../../../domain/entities/ItemLista";
 import { IListaRepository } from "../../../domain/repositories/IListaRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { CreateItemListaCommand } from "./CreateItemListaCommand";
-import { ItemListaResponseDto } from "../../dto/lista.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { randomUUID } from "crypto";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class CreateItemListaHandler {
-  constructor(
-    private readonly listaRepository: IListaRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly listaRepository: IListaRepository) {}
 
-  async execute(
-    command: CreateItemListaCommand,
-  ): Promise<ItemListaResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+  async execute(command: CreateItemListaCommand): Promise<any> {
+    const { userId, listaId, nome, quantidade, valorUnitario, categoriaId } =
+      command;
 
-    // Verificar se a lista pertence ao usuário
-    const listaCheck = await pool.query(
-      `SELECT l.id, n.user_id 
-       FROM listas l
-       JOIN blocos b ON l.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
+    // Verificar permissão
+    const check = await pool.query(
+      `SELECT n.user_id FROM listas l
+       JOIN blocos b ON b.id = l.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
        WHERE l.id = $1 AND l.deleted_at IS NULL`,
-      [command.listaId],
+      [listaId],
     );
 
-    if (listaCheck.rows.length === 0) {
-      throw new Error("Lista não encontrada");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Lista", listaId);
     }
 
-    if (listaCheck.rows[0].user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException(
+        "Sem permissão para adicionar itens nesta lista",
+      );
     }
 
-    const item = ItemLista.create({
-      listaId: command.listaId,
-      nome: command.nome,
-      quantidade: command.quantidade,
-      valorUnitario: command.valorUnitario,
-      categoriaId: command.categoriaId,
-    });
+    const id = randomUUID();
+    const quantidadeFinal = quantidade || 1;
 
-    await this.listaRepository.saveItem(item);
+    await pool.query(
+      `INSERT INTO itens_lista (id, lista_id, categoria_id, nome, quantidade, valor_unitario, checked, created_at, updated_at)
+   VALUES ($1, $2, $3, $4, $5, $6, false, NOW(), NOW())`,
+      [
+        id,
+        listaId,
+        categoriaId || null,
+        nome,
+        quantidadeFinal,
+        valorUnitario || null,
+        // valorTotal
+      ],
+    );
+
+    const result = await pool.query(`SELECT * FROM itens_lista WHERE id = $1`, [
+      id,
+    ]);
 
     return {
-      id: item.id,
-      listaId: item.listaId,
-      categoriaId: item.categoriaId,
-      nome: item.nome,
-      quantidade: item.quantidade,
-      valorUnitario: item.valorUnitario,
-      valorTotal: item.valorTotal,
-      checked: item.checked,
-      createdAt: item.createdAt.toISOString(),
-      updatedAt: item.updatedAt.toISOString(),
+      id: result.rows[0].id,
+      listaId: result.rows[0].lista_id,
+      categoriaId: result.rows[0].categoria_id,
+      nome: result.rows[0].nome,
+      quantidade: result.rows[0].quantidade,
+      valorUnitario: result.rows[0].valor_unitario,
+      valorTotal: result.rows[0].valor_total,
+      checked: result.rows[0].checked,
+      createdAt: result.rows[0].created_at,
+      updatedAt: result.rows[0].updated_at,
     };
   }
 }

@@ -18,26 +18,24 @@ export class Categoria {
   ) {}
 
   static create(props: CategoriaProps): Categoria {
-    if (!props.nome || props.nome.trim().length < 1) {
-      throw new Error("Nome da categoria é obrigatório");
-    }
-
     return new Categoria(
       props.id || uuidv4(),
       props.listaId,
-      props.nome.trim(),
+      props.nome,
       props.cor || null,
       props.createdAt || new Date(),
     );
   }
 
-  static reconstitute(props: Required<CategoriaProps>): Categoria {
+  static reconstitute(
+    props: Required<CategoriaProps> & { id: string },
+  ): Categoria {
     return new Categoria(
-      props.id!,
+      props.id,
       props.listaId,
       props.nome,
       props.cor || null,
-      props.createdAt!,
+      props.createdAt,
     );
   }
 
@@ -58,23 +56,9 @@ export class Categoria {
   }
 
   updateNome(nome: string): void {
-    if (!nome || nome.trim().length < 1) {
-      throw new Error("Nome da categoria é obrigatório");
-    }
-    this._nome = nome.trim();
+    this._nome = nome;
   }
-
   updateCor(cor: string | null): void {
     this._cor = cor;
-  }
-
-  toJSON() {
-    return {
-      id: this._id,
-      listaId: this._listaId,
-      nome: this._nome,
-      cor: this._cor,
-      createdAt: this._createdAt.toISOString(),
-    };
   }
 }

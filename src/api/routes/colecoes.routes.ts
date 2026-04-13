@@ -21,52 +21,25 @@ const colecaoRepository = new ColecaoRepository();
 const currentUserService = new CurrentUserService();
 
 // Coleção
-const createColecaoHandler = new CreateColecaoHandler(
-  colecaoRepository,
-  currentUserService,
-);
-const updateColecaoHandler = new UpdateColecaoHandler(
-  colecaoRepository,
-  currentUserService,
-);
-const deleteColecaoHandler = new DeleteColecaoHandler(
-  colecaoRepository,
-  currentUserService,
-);
+const createColecaoHandler = new CreateColecaoHandler(colecaoRepository);
+const updateColecaoHandler = new UpdateColecaoHandler(colecaoRepository);
+const deleteColecaoHandler = new DeleteColecaoHandler(colecaoRepository);
 const getColecoesByBlocoHandler = new GetColecoesByBlocoHandler(
   colecaoRepository,
 );
 
 // Campo
-const createCampoHandler = new CreateCampoHandler(
-  colecaoRepository,
-  currentUserService,
-);
-const updateCampoHandler = new UpdateCampoHandler(
-  colecaoRepository,
-  currentUserService,
-);
-const deleteCampoHandler = new DeleteCampoHandler(
-  colecaoRepository,
-  currentUserService,
-);
+const createCampoHandler = new CreateCampoHandler(colecaoRepository);
+const updateCampoHandler = new UpdateCampoHandler(colecaoRepository);
+const deleteCampoHandler = new DeleteCampoHandler(colecaoRepository);
 const getCamposByColecaoHandler = new GetCamposByColecaoHandler(
   colecaoRepository,
 );
 
 // Item
-const createItemHandler = new CreateItemHandler(
-  colecaoRepository,
-  currentUserService,
-);
-const updateItemHandler = new UpdateItemHandler(
-  colecaoRepository,
-  currentUserService,
-);
-const deleteItemHandler = new DeleteItemHandler(
-  colecaoRepository,
-  currentUserService,
-);
+const createItemHandler = new CreateItemHandler(colecaoRepository);
+const updateItemHandler = new UpdateItemHandler(colecaoRepository);
+const deleteItemHandler = new DeleteItemHandler(colecaoRepository);
 const getItemsByColecaoHandler = new GetItemsByColecaoHandler(
   colecaoRepository,
 );
@@ -88,7 +61,7 @@ const colecoesController = new ColecoesController(
 
 export const colecoesRoutes = Router();
 
-// ========== COLEÇÃO ==========
+//  COLEÇÃO
 colecoesRoutes.get("/bloco/:blocoId", authenticate, (req, res, next) => {
   colecoesController.listByBloco(req as AuthRequest, res).catch(next);
 });
@@ -105,7 +78,7 @@ colecoesRoutes.delete("/:id", authenticate, (req, res, next) => {
   colecoesController.deleteColecao(req as AuthRequest, res).catch(next);
 });
 
-// ========== CAMPO ==========
+//  CAMPO
 colecoesRoutes.get("/:colecaoId/campos", authenticate, (req, res, next) => {
   colecoesController.getCamposByColecao(req as AuthRequest, res).catch(next);
 });
@@ -122,7 +95,7 @@ colecoesRoutes.delete("/campos/:id", authenticate, (req, res, next) => {
   colecoesController.deleteCampo(req as AuthRequest, res).catch(next);
 });
 
-// ========== ITEM ==========
+//  ITEM
 colecoesRoutes.get("/:colecaoId/items", authenticate, (req, res, next) => {
   colecoesController.getItemsByColecao(req as AuthRequest, res).catch(next);
 });

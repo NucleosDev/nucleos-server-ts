@@ -40,14 +40,14 @@ export class Lista {
     );
   }
 
-  static reconstitute(props: Required<ListaProps>): Lista {
+  static reconstitute(props: Required<ListaProps> & { id: string }): Lista {
     return new Lista(
-      props.id!,
+      props.id,
       props.blocoId,
       props.nome,
-      props.tipoLista!,
-      props.createdAt!,
-      props.updatedAt!,
+      props.tipoLista || "generica",
+      props.createdAt,
+      props.updatedAt,
       props.deletedAt || null,
     );
   }

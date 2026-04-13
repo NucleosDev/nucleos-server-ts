@@ -1,3 +1,4 @@
+// src/api/controllers/v1/TarefasController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { CreateTarefaHandler } from "../../../application/commands/tarefas/CreateTarefaHandler";
@@ -17,34 +18,49 @@ export class TarefasController {
     private readonly concluirTarefaHandler: ConcluirTarefaHandler,
     private readonly deleteTarefaHandler: DeleteTarefaHandler,
     private readonly getTarefasByBlocoHandler: GetTarefasByBlocoHandler,
-    private readonly getTarefasVencendoHandler: GetTarefasVencendoHandler,
+    private readonly getTarefasVencendoHandler: GetTarefasVencendoHandler, // ✅ Adicionado
   ) {}
 
   async listByBloco(req: AuthRequest, res: Response): Promise<Response> {
     try {
+      const userId = req.user?.id;
       const { blocoId } = req.params;
-      
-      // 🔥 CORREÇÃO: Validar se blocoId existe e é string
-      if (!blocoId || typeof blocoId !== 'string') {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'ID do bloco inválido' 
-        });
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
       }
-      
-      const query = new GetTarefasByBlocoQuery(blocoId);
+
+      if (!blocoId || typeof blocoId !== "string") {
+        return res
+          .status(400)
+          .json({ success: false, message: "ID do bloco inválido" });
+      }
+
+      const query = new GetTarefasByBlocoQuery(blocoId, userId);
       const result = await this.getTarefasByBlocoHandler.execute(query);
-      return res.json({ success: true, data: result });
+
+      return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
     }
   }
 
+  // ✅ Método listVencendo adicionado
   async listVencendo(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const query = new GetTarefasVencendoQuery();
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
+
+      const query = new GetTarefasVencendoQuery(userId);
       const result = await this.getTarefasVencendoHandler.execute(query);
-      return res.json({ success: true, data: result });
+      return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
     }
@@ -52,32 +68,39 @@ export class TarefasController {
 
   async create(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const { blocoId, titulo, descricao, prioridade, dataVencimento } = req.body;
+      const userId = req.user?.id;
+      const { blocoId, titulo, descricao, prioridade, dataVencimento } =
+        req.body;
 
-      // 🔥 CORREÇÃO: Validações de tipo
-      if (!blocoId || typeof blocoId !== 'string') {
-        return res.status(400).json({ 
-          success: false, 
-          message: "BlocoId inválido" 
-        });
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
       }
 
-      if (!titulo || typeof titulo !== 'string') {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Título é obrigatório" 
-        });
+      if (!blocoId || typeof blocoId !== "string") {
+        return res
+          .status(400)
+          .json({ success: false, message: "BlocoId inválido" });
+      }
+
+      if (!titulo || typeof titulo !== "string") {
+        return res
+          .status(400)
+          .json({ success: false, message: "Título é obrigatório" });
       }
 
       const command = new CreateTarefaCommand(
+        userId,
         blocoId,
         titulo,
         descricao,
         prioridade,
-        dataVencimento,
+        dataVencimento ? new Date(dataVencimento) : undefined,
       );
+
       const result = await this.createTarefaHandler.execute(command);
-      return res.status(201).json({ success: true, data: result });
+      return res.status(201).json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
     }
@@ -85,19 +108,24 @@ export class TarefasController {
 
   async concluir(req: AuthRequest, res: Response): Promise<Response> {
     try {
+      const userId = req.user?.id;
       const { id } = req.params;
-      
-      // 🔥 CORREÇÃO: Validar se id existe e é string
-      if (!id || typeof id !== 'string') {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'ID da tarefa inválido' 
-        });
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
       }
-      
-      const command = new ConcluirTarefaCommand(id);
+
+      if (!id || typeof id !== "string") {
+        return res
+          .status(400)
+          .json({ success: false, message: "ID da tarefa inválido" });
+      }
+
+      const command = new ConcluirTarefaCommand(id, userId);
       const result = await this.concluirTarefaHandler.execute(command);
-      return res.json({ success: true, data: result });
+      return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
     }
@@ -105,17 +133,22 @@ export class TarefasController {
 
   async delete(req: AuthRequest, res: Response): Promise<Response> {
     try {
+      const userId = req.user?.id;
       const { id } = req.params;
-      
-      // 🔥 CORREÇÃO: Validar se id existe e é string
-      if (!id || typeof id !== 'string') {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'ID da tarefa inválido' 
-        });
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
       }
-      
-      const command = new DeleteTarefaCommand(id);
+
+      if (!id || typeof id !== "string") {
+        return res
+          .status(400)
+          .json({ success: false, message: "ID da tarefa inválido" });
+      }
+
+      const command = new DeleteTarefaCommand(id, userId);
       await this.deleteTarefaHandler.execute(command);
       return res.status(204).send();
     } catch (error: any) {

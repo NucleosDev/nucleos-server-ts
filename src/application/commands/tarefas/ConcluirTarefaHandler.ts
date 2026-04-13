@@ -1,24 +1,23 @@
 import { ITarefaRepository } from "../../../domain/repositories/ITarefaRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { ConcluirTarefaCommand } from "./ConcluirTarefaCommand";
 import { TarefaResponseDto } from "../../dto/tarefa.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class ConcluirTarefaHandler {
-  constructor(
-    private readonly tarefaRepository: ITarefaRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly tarefaRepository: ITarefaRepository) {}
 
   async execute(command: ConcluirTarefaCommand): Promise<TarefaResponseDto> {
-    const userId = this.currentUserService.getUserId();
+    const { id, userId } = command;
+
     if (!userId) {
       throw new Error("Usuário não autenticado");
     }
 
-    const tarefa = await this.tarefaRepository.findById(command.id);
+    const tarefa = await this.tarefaRepository.findById(id);
     if (!tarefa) {
-      throw new Error("Tarefa não encontrada");
+      throw new NotFoundException("Tarefa", id);
     }
 
     // Verificar permissão
@@ -30,11 +29,12 @@ export class ConcluirTarefaHandler {
       [tarefa.blocoId],
     );
 
-    if (blocoCheck.rows[0]?.user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (blocoCheck.rows.length === 0 || blocoCheck.rows[0].user_id !== userId) {
+      throw new ForbiddenException(
+        "Você não tem permissão para concluir esta tarefa",
+      );
     }
 
-    // 🔥 Concluir a tarefa (status muda para 'concluida', concluida_em = NOW())
     tarefa.concluir();
     await this.tarefaRepository.update(tarefa);
 

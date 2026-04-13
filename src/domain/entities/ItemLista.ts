@@ -5,7 +5,7 @@ export interface ItemListaProps {
   listaId: string;
   categoriaId?: string | null;
   nome: string;
-  quantidade?: number;
+  quantidade: number;
   valorUnitario?: number | null;
   checked?: boolean;
   createdAt?: Date;
@@ -28,35 +28,33 @@ export class ItemLista {
   ) {}
 
   static create(props: ItemListaProps): ItemLista {
-    if (!props.nome || props.nome.trim().length < 1) {
-      throw new Error("Nome do item é obrigatório");
-    }
-
     return new ItemLista(
       props.id || uuidv4(),
       props.listaId,
       props.categoriaId || null,
-      props.nome.trim(),
-      props.quantidade ?? 1,
-      props.valorUnitario ?? null,
-      props.checked ?? false,
+      props.nome,
+      props.quantidade || 1,
+      props.valorUnitario || null,
+      props.checked || false,
       props.createdAt || new Date(),
       props.updatedAt || new Date(),
       props.deletedAt || null,
     );
   }
 
-  static reconstitute(props: Required<ItemListaProps>): ItemLista {
+  static reconstitute(
+    props: Required<ItemListaProps> & { id: string },
+  ): ItemLista {
     return new ItemLista(
-      props.id!,
+      props.id,
       props.listaId,
       props.categoriaId || null,
       props.nome,
-      props.quantidade!,
-      props.valorUnitario ?? null,
-      props.checked!,
-      props.createdAt!,
-      props.updatedAt!,
+      props.quantidade,
+      props.valorUnitario || null,
+      props.checked || false,
+      props.createdAt,
+      props.updatedAt,
       props.deletedAt || null,
     );
   }
@@ -79,6 +77,9 @@ export class ItemLista {
   get valorUnitario(): number | null {
     return this._valorUnitario;
   }
+  get valorTotal(): number | null {
+    return this._valorUnitario ? this._quantidade * this._valorUnitario : null;
+  }
   get checked(): boolean {
     return this._checked;
   }
@@ -91,72 +92,29 @@ export class ItemLista {
   get deletedAt(): Date | null {
     return this._deletedAt;
   }
-  get valorTotal(): number | null {
-    if (this._valorUnitario === null) return null;
-    return this._quantidade * this._valorUnitario;
-  }
-  get isDeleted(): boolean {
-    return this._deletedAt !== null;
-  }
 
   updateNome(nome: string): void {
-    if (!nome || nome.trim().length < 1) {
-      throw new Error("Nome do item é obrigatório");
-    }
-    this._nome = nome.trim();
+    this._nome = nome;
     this.touch();
   }
-
   updateQuantidade(quantidade: number): void {
-    if (quantidade < 0) {
-      throw new Error("Quantidade não pode ser negativa");
-    }
     this._quantidade = quantidade;
     this.touch();
   }
-
   updateValorUnitario(valor: number | null): void {
     this._valorUnitario = valor;
     this.touch();
   }
-
-  toggleChecked(): void {
-    this._checked = !this._checked;
-    this.touch();
-  }
-
-  setChecked(checked: boolean): void {
-    this._checked = checked;
-    this.touch();
-  }
-
   updateCategoria(categoriaId: string | null): void {
     this._categoriaId = categoriaId;
     this.touch();
   }
-
-  softDelete(): void {
-    this._deletedAt = new Date();
+  toggleCheck(): void {
+    this._checked = !this._checked;
     this.touch();
   }
 
   private touch(): void {
     this._updatedAt = new Date();
-  }
-
-  toJSON() {
-    return {
-      id: this._id,
-      listaId: this._listaId,
-      categoriaId: this._categoriaId,
-      nome: this._nome,
-      quantidade: this._quantidade,
-      valorUnitario: this._valorUnitario,
-      valorTotal: this.valorTotal,
-      checked: this._checked,
-      createdAt: this._createdAt.toISOString(),
-      updatedAt: this._updatedAt.toISOString(),
-      deletedAt: this._deletedAt?.toISOString() || null,
-    };
   }
 }

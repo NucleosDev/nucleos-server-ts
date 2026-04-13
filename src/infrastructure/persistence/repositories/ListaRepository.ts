@@ -5,7 +5,7 @@ import { Categoria } from "../../../domain/entities/Categoria";
 import { IListaRepository } from "../../../domain/repositories/IListaRepository";
 
 export class ListaRepository implements IListaRepository {
-  // ========== LISTA ==========
+  //  LISTA
   async saveLista(lista: Lista): Promise<void> {
     await pool.query(
       `INSERT INTO listas (id, bloco_id, nome, tipo_lista, created_at, updated_at, deleted_at)
@@ -36,7 +36,7 @@ export class ListaRepository implements IListaRepository {
     return this.mapToListaEntity(result.rows[0]);
   }
 
-  async findAllListasByBlocoId(blocoId: string): Promise<Lista[]> {
+  async findListasByBlocoId(blocoId: string): Promise<Lista[]> {
     const result = await pool.query(
       `SELECT * FROM listas WHERE bloco_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC`,
       [blocoId],
@@ -57,7 +57,7 @@ export class ListaRepository implements IListaRepository {
     ]);
   }
 
-  // ========== ITEM ==========
+  //  ITEM
   async saveItem(item: ItemLista): Promise<void> {
     await pool.query(
       `INSERT INTO itens_lista (id, lista_id, categoria_id, nome, quantidade, valor_unitario, checked, created_at, updated_at, deleted_at)
@@ -94,7 +94,7 @@ export class ListaRepository implements IListaRepository {
     return this.mapToItemEntity(result.rows[0]);
   }
 
-  async findAllItemsByListaId(listaId: string): Promise<ItemLista[]> {
+  async findItemsByListaId(listaId: string): Promise<ItemLista[]> {
     const result = await pool.query(
       `SELECT * FROM itens_lista WHERE lista_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC`,
       [listaId],
@@ -149,7 +149,7 @@ export class ListaRepository implements IListaRepository {
     }
   }
 
-  // ========== CATEGORIA ==========
+  //  CATEGORIA
   async saveCategoria(categoria: Categoria): Promise<void> {
     await pool.query(
       `INSERT INTO categorias (id, lista_id, nome, cor, created_at)
@@ -175,7 +175,7 @@ export class ListaRepository implements IListaRepository {
     return this.mapToCategoriaEntity(result.rows[0]);
   }
 
-  async findAllCategoriasByListaId(listaId: string): Promise<Categoria[]> {
+  async findCategoriasByListaId(listaId: string): Promise<Categoria[]> {
     const result = await pool.query(
       `SELECT * FROM categorias WHERE lista_id = $1 ORDER BY nome ASC`,
       [listaId],
@@ -200,7 +200,7 @@ export class ListaRepository implements IListaRepository {
     await pool.query(`DELETE FROM categorias WHERE id = $1`, [id]);
   }
 
-  // ========== MAPPERS ==========
+  //  MAPPERS
   private mapToListaEntity(row: any): Lista {
     return Lista.reconstitute({
       id: row.id,
@@ -219,8 +219,8 @@ export class ListaRepository implements IListaRepository {
       listaId: row.lista_id,
       categoriaId: row.categoria_id,
       nome: row.nome,
-      quantidade: row.quantidade,
-      valorUnitario: row.valor_unitario,
+      quantidade: parseFloat(row.quantidade) || 1,
+      valorUnitario: row.valor_unitario ? parseFloat(row.valor_unitario) : null,
       checked: row.checked,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),

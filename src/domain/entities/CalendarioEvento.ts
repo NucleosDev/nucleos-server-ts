@@ -1,4 +1,6 @@
+// src/domain/entities/CalendarioEvento.ts
 import { v4 as uuidv4 } from "uuid";
+import { BaseEntity } from "./base.entity";
 
 export interface CalendarioEventoProps {
   id?: string;
@@ -11,56 +13,56 @@ export interface CalendarioEventoProps {
   updatedAt?: Date;
 }
 
-export class CalendarioEvento {
+export class CalendarioEvento extends BaseEntity {
   private constructor(
-    private readonly _id: string,
-    private readonly _nucleoId: string,
+    id: string,
+    private _nucleoId: string,
     private _titulo: string,
     private _descricao: string | null,
     private _dataEvento: Date,
     private _duracaoMinutos: number | null,
-    private readonly _createdAt: Date,
-    private _updatedAt: Date,
-  ) {}
+    createdAt: Date,
+    updatedAt: Date,
+  ) {
+    super();
+    this.id = id;
+    this.createdAt = createdAt;
+    this.updatedAt = updatedAt;
+  }
 
   static create(props: CalendarioEventoProps): CalendarioEvento {
-    if (!props.titulo || props.titulo.trim().length < 3) {
-      throw new Error("Título deve ter pelo menos 3 caracteres");
+    if (!props.titulo || props.titulo.trim().length === 0) {
+      throw new Error("Título é obrigatório");
     }
     if (!props.dataEvento) {
       throw new Error("Data do evento é obrigatória");
     }
-
     return new CalendarioEvento(
       props.id || uuidv4(),
       props.nucleoId,
       props.titulo.trim(),
-      props.descricao || null,
+      props.descricao?.trim() || null,
       props.dataEvento,
-      props.duracaoMinutos || null,
+      props.duracaoMinutos ?? null,
       props.createdAt || new Date(),
       props.updatedAt || new Date(),
     );
   }
 
-  static reconstitute(
-    props: Required<CalendarioEventoProps>,
-  ): CalendarioEvento {
+  static reconstitute(data: any): CalendarioEvento {
     return new CalendarioEvento(
-      props.id!,
-      props.nucleoId,
-      props.titulo,
-      props.descricao || null,
-      props.dataEvento,
-      props.duracaoMinutos || null,
-      props.createdAt!,
-      props.updatedAt!,
+      data.id,
+      data.nucleo_id,
+      data.titulo,
+      data.descricao,
+      new Date(data.data_evento),
+      data.duracao_minutos,
+      new Date(data.created_at),
+      new Date(data.updated_at),
     );
   }
 
-  get id(): string {
-    return this._id;
-  }
+  // Getters
   get nucleoId(): string {
     return this._nucleoId;
   }
@@ -76,58 +78,42 @@ export class CalendarioEvento {
   get duracaoMinutos(): number | null {
     return this._duracaoMinutos;
   }
-  get createdAt(): Date {
-    return this._createdAt;
-  }
-  get updatedAt(): Date {
-    return this._updatedAt;
-  }
 
-  get dataFim(): Date | null {
-    if (!this._duracaoMinutos) return null;
-    const fim = new Date(this._dataEvento);
-    fim.setMinutes(fim.getMinutes() + this._duracaoMinutos);
-    return fim;
-  }
-
+  // Métodos de domínio
   updateTitulo(titulo: string): void {
-    if (!titulo || titulo.trim().length < 3) {
-      throw new Error("Título deve ter pelo menos 3 caracteres");
+    if (!titulo || titulo.trim().length === 0) {
+      throw new Error("Título é obrigatório");
     }
     this._titulo = titulo.trim();
-    this.touch();
+    this.updatedAt = new Date();
   }
 
   updateDescricao(descricao: string | null): void {
-    this._descricao = descricao;
-    this.touch();
+    this._descricao = descricao?.trim() || null;
+    this.updatedAt = new Date();
   }
 
   updateDataEvento(data: Date): void {
+    if (!data) throw new Error("Data do evento é obrigatória");
     this._dataEvento = data;
-    this.touch();
+    this.updatedAt = new Date();
   }
 
-  updateDuracao(duracao: number | null): void {
-    this._duracaoMinutos = duracao;
-    this.touch();
-  }
-
-  private touch(): void {
-    this._updatedAt = new Date();
+  updateDuracao(minutos: number | null): void {
+    this._duracaoMinutos = minutos;
+    this.updatedAt = new Date();
   }
 
   toJSON() {
     return {
-      id: this._id,
+      id: this.id,
       nucleoId: this._nucleoId,
       titulo: this._titulo,
       descricao: this._descricao,
       dataEvento: this._dataEvento.toISOString(),
       duracaoMinutos: this._duracaoMinutos,
-      dataFim: this.dataFim?.toISOString() || null,
-      createdAt: this._createdAt.toISOString(),
-      updatedAt: this._updatedAt.toISOString(),
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
     };
   }
 }

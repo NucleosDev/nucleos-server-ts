@@ -1,55 +1,51 @@
-import { Campo } from "../../../domain/entities/Campo";
 import { IColecaoRepository } from "../../../domain/repositories/IColecaoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { CreateCampoCommand } from "./CreateCampoCommand";
-import { CampoResponseDto } from "../../dto/colecao.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { randomUUID } from "crypto";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class CreateCampoHandler {
-  constructor(
-    private readonly colecaoRepository: IColecaoRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly colecaoRepository: IColecaoRepository) {}
 
-  async execute(command: CreateCampoCommand): Promise<CampoResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+  async execute(command: CreateCampoCommand): Promise<any> {
+    const { userId, colecaoId, nome, tipoCampo } = command;
 
-    // Verificar permissão via coleção
-    const colecaoCheck = await pool.query(
-      `SELECT c.id, n.user_id 
-       FROM colecoes c
-       JOIN blocos b ON c.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
+    // Verificar permissão
+    const check = await pool.query(
+      `SELECT n.user_id FROM colecoes c
+       JOIN blocos b ON b.id = c.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
        WHERE c.id = $1`,
-      [command.colecaoId],
+      [colecaoId],
     );
 
-    if (colecaoCheck.rows.length === 0) {
-      throw new Error("Coleção não encontrada");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Coleção", colecaoId);
     }
 
-    if (colecaoCheck.rows[0].user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException(
+        "Sem permissão para criar campo nesta coleção",
+      );
     }
 
-    const campo = Campo.create({
-      colecaoId: command.colecaoId,
-      nome: command.nome,
-      tipoCampo: command.tipoCampo,
-    });
+    const id = randomUUID();
+    const now = new Date();
 
-    await this.colecaoRepository.saveCampo(campo);
+    await pool.query(
+      `INSERT INTO campos (id, colecao_id, nome, tipo_campo, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $5)`,
+      [id, colecaoId, nome, tipoCampo, now],
+    );
 
     return {
-      id: campo.id,
-      colecaoId: campo.colecaoId,
-      nome: campo.nome,
-      tipoCampo: campo.tipoCampo,
-      createdAt: campo.createdAt.toISOString(),
-      updatedAt: campo.updatedAt.toISOString(),
+      id,
+      colecaoId,
+      nome,
+      tipoCampo,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     };
   }
 }

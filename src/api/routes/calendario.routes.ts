@@ -1,61 +1,62 @@
 import { Router } from "express";
 import { authenticate } from "../middlewares/auth.middleware";
-import { AuthRequest } from "../middlewares/auth.middleware";
 import { CalendarioController } from "../controllers/v1/CalendarioController";
+import { CalendarioRepository } from "../../infrastructure/persistence/repositories/CalendarioRepository";
+import { NucleoRepository } from "../../infrastructure/persistence/repositories/NucleoRepository";
 import { CreateEventoHandler } from "../../application/commands/calendario/CreateEventoHandler";
 import { UpdateEventoHandler } from "../../application/commands/calendario/UpdateEventoHandler";
 import { DeleteEventoHandler } from "../../application/commands/calendario/DeleteEventoHandler";
 import { GetEventosByNucleoHandler } from "../../application/queries/calendario/GetEventosByNucleoHandler";
 import { GetEventoByIdHandler } from "../../application/queries/calendario/GetEventoByIdHandler";
-import { CalendarioRepository } from "../../infrastructure/persistence/repositories/CalendarioRepository";
-import { CurrentUserService } from "../../infrastructure/services/current-user.service";
 
 const calendarioRepository = new CalendarioRepository();
-const currentUserService = new CurrentUserService();
+const nucleoRepository = new NucleoRepository();
 
-const createEventoHandler = new CreateEventoHandler(
+const createHandler = new CreateEventoHandler(
   calendarioRepository,
-  currentUserService,
+  nucleoRepository,
 );
-const updateEventoHandler = new UpdateEventoHandler(
+const updateHandler = new UpdateEventoHandler(
   calendarioRepository,
-  currentUserService,
+  nucleoRepository,
 );
-const deleteEventoHandler = new DeleteEventoHandler(
+const deleteHandler = new DeleteEventoHandler(
   calendarioRepository,
-  currentUserService,
+  nucleoRepository,
 );
-const getEventosByNucleoHandler = new GetEventosByNucleoHandler(
+const listByNucleoHandler = new GetEventosByNucleoHandler(
   calendarioRepository,
+  nucleoRepository,
 );
-const getEventoByIdHandler = new GetEventoByIdHandler(calendarioRepository);
+const getByIdHandler = new GetEventoByIdHandler(
+  calendarioRepository,
+  nucleoRepository,
+);
 
 const calendarioController = new CalendarioController(
-  createEventoHandler,
-  updateEventoHandler,
-  deleteEventoHandler,
-  getEventosByNucleoHandler,
-  getEventoByIdHandler,
+  createHandler,
+  updateHandler,
+  deleteHandler,
+  listByNucleoHandler,
+  getByIdHandler,
 );
 
 export const calendarioRoutes = Router();
 
-calendarioRoutes.get("/nucleo/:nucleoId", authenticate, (req, res, next) => {
-  calendarioController.listByNucleo(req as AuthRequest, res).catch(next);
-});
+calendarioRoutes.use(authenticate);
 
-calendarioRoutes.get("/:id", authenticate, (req, res, next) => {
-  calendarioController.getById(req as AuthRequest, res).catch(next);
+calendarioRoutes.get("/nucleo/:nucleoId", (req, res, next) => {
+  calendarioController.getByNucleo(req as any, res).catch(next);
 });
-
-calendarioRoutes.post("/", authenticate, (req, res, next) => {
-  calendarioController.create(req as AuthRequest, res).catch(next);
+calendarioRoutes.get("/:id", (req, res, next) => {
+  calendarioController.getById(req as any, res).catch(next);
 });
-
-calendarioRoutes.put("/:id", authenticate, (req, res, next) => {
-  calendarioController.update(req as AuthRequest, res).catch(next);
+calendarioRoutes.post("/", (req, res, next) => {
+  calendarioController.create(req as any, res).catch(next);
 });
-
-calendarioRoutes.delete("/:id", authenticate, (req, res, next) => {
-  calendarioController.delete(req as AuthRequest, res).catch(next);
+calendarioRoutes.put("/:id", (req, res, next) => {
+  calendarioController.update(req as any, res).catch(next);
+});
+calendarioRoutes.delete("/:id", (req, res, next) => {
+  calendarioController.delete(req as any, res).catch(next);
 });

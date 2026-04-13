@@ -1,6 +1,7 @@
+// application/dto/colecao.dto.ts
 import { TipoCampo } from "../../domain/entities/Campo";
 
-// ========== COLEÇÃO ==========
+//  COLEÇÃO
 export interface CreateColecaoDto {
   blocoId: string;
   nome: string;
@@ -18,7 +19,7 @@ export interface ColecaoResponseDto {
   updatedAt: string;
 }
 
-// ========== CAMPO ==========
+//  CAMPO
 export interface CreateCampoDto {
   colecaoId: string;
   nome: string;
@@ -39,10 +40,10 @@ export interface CampoResponseDto {
   updatedAt: string;
 }
 
-// ========== ITEM ==========
+//  ITEM
 export interface CreateItemDto {
   colecaoId: string;
-  valores: Record<string, any>; // campoId -> valor
+  valores: Record<string, any>;
 }
 
 export interface UpdateItemDto {
@@ -52,12 +53,16 @@ export interface UpdateItemDto {
 export interface ItemResponseDto {
   id: string;
   colecaoId: string;
-  valores: Record<string, any>;
   createdAt: string;
   updatedAt: string;
 }
 
-// ========== VALOR ==========
+//
+export interface ItemComValoresResponseDto extends ItemResponseDto {
+  valores: Record<string, any>;
+}
+
+//  VALOR
 export interface ItemValorResponseDto {
   id: string;
   itemId: string;

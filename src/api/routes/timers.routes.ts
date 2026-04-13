@@ -1,13 +1,21 @@
-// // api/routes/timers.routes.ts
-// import { Router } from 'express';
-// import { TimersController } from '../controllers/v1/TimersController';
+import { Router } from "express";
+import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
+import { TimersController } from "../controllers/v1/TimersController";
 
-// const router = Router();
+const router = Router();
 
-// router.get('/timers/nucleo/:nucleoId', TimersController.listByNucleo);
-// router.post('/timers/start', TimersController.start);
-// router.post('/timers/:id/pause', TimersController.pause);
-// router.post('/timers/:id/resume', TimersController.resume);
-// router.post('/timers/:id/stop', TimersController.stop);
+router.use(authenticate);
 
-// export { router };
+router.get("/timers/nucleo/:nucleoId", (req, res, next) => {
+  TimersController.listByNucleo(req as AuthRequest, res).catch(next);
+});
+
+router.post("/timers/start", (req, res, next) => {
+  TimersController.start(req as AuthRequest, res).catch(next);
+});
+
+router.post("/timers/:id/stop", (req, res, next) => {
+  TimersController.stop(req as AuthRequest, res).catch(next);
+});
+
+export { router };

@@ -1,57 +1,52 @@
-
-import { Categoria } from "../../../domain/entities/Categoria";
 import { IListaRepository } from "../../../domain/repositories/IListaRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { CreateCategoriaCommand } from "./CreateCategoriaCommand";
-import { CategoriaResponseDto } from "../../dto/lista.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { randomUUID } from "crypto";
+import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class CreateCategoriaHandler {
-  constructor(
-    private readonly listaRepository: IListaRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly listaRepository: IListaRepository) {}
 
-  async execute(
-    command: CreateCategoriaCommand,
-  ): Promise<CategoriaResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
+  async execute(command: CreateCategoriaCommand): Promise<any> {
+    const { userId, listaId, nome, cor } = command;
 
-    // Verificar se a lista pertence ao usuário
-    const listaCheck = await pool.query(
-      `SELECT l.id, n.user_id 
-       FROM listas l
-       JOIN blocos b ON l.bloco_id = b.id
-       JOIN nucleos n ON b.nucleo_id = n.id
+    // Verificar permissão
+    const check = await pool.query(
+      `SELECT n.user_id FROM listas l
+       JOIN blocos b ON b.id = l.bloco_id
+       JOIN nucleos n ON n.id = b.nucleo_id
        WHERE l.id = $1 AND l.deleted_at IS NULL`,
-      [command.listaId],
+      [listaId],
     );
 
-    if (listaCheck.rows.length === 0) {
-      throw new Error("Lista não encontrada");
+    if (check.rows.length === 0) {
+      throw new NotFoundException("Lista", listaId);
     }
 
-    if (listaCheck.rows[0].user_id !== userId) {
-      throw new Error("Acesso negado");
+    if (check.rows[0].user_id !== userId) {
+      throw new ForbiddenException(
+        "Sem permissão para criar categoria nesta lista",
+      );
     }
 
-    const categoria = Categoria.create({
-      listaId: command.listaId,
-      nome: command.nome,
-      cor: command.cor,
-    });
+    const id = randomUUID();
+    await pool.query(
+      `INSERT INTO categorias (id, lista_id, nome, cor, created_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [id, listaId, nome, cor || null],
+    );
 
-    await this.listaRepository.saveCategoria(categoria);
+    const result = await pool.query(`SELECT * FROM categorias WHERE id = $1`, [
+      id,
+    ]);
 
     return {
-      id: categoria.id,
-      listaId: categoria.listaId,
-      nome: categoria.nome,
-      cor: categoria.cor,
-      createdAt: categoria.createdAt.toISOString(),
+      id: result.rows[0].id,
+      listaId: result.rows[0].lista_id,
+      nome: result.rows[0].nome,
+      cor: result.rows[0].cor,
+      createdAt: result.rows[0].created_at,
     };
   }
 }

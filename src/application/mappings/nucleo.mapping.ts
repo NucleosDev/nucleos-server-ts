@@ -1,5 +1,6 @@
+// application/mappings/nucleo.mapping.ts
 import { Nucleo } from "../../domain/entities/Nucleo";
-import { NucleoDTO } from "../dto/nucleo.dto";
+import { NucleoDTO, NucleoResponseDto } from "../dto/nucleo.dto";
 
 export class NucleoMapper {
   static toDTO(nucleo: Nucleo): NucleoDTO {
@@ -14,6 +15,23 @@ export class NucleoMapper {
       iconId: nucleo.iconId,
       createdAt: nucleo.createdAt,
       updatedAt: nucleo.updatedAt,
+      deletedAt: nucleo.deletedAt,
+    };
+  }
+
+  static toResponseDto(nucleo: Nucleo): NucleoResponseDto {
+    return {
+      id: nucleo.id,
+      userId: nucleo.userId,
+      nome: nucleo.nome,
+      descricao: nucleo.descricao,
+      tipo: nucleo.tipo,
+      corDestaque: nucleo.corDestaque,
+      imagemCapa: nucleo.imagemCapa,
+      iconId: nucleo.iconId,
+      createdAt: nucleo.createdAt,
+      updatedAt: nucleo.updatedAt,
+      deletedAt: nucleo.deletedAt,
     };
   }
 
