@@ -1,0 +1,57 @@
+# Estágio 1: Build
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY package*.json ./
+COPY tsconfig.json ./
+
+# Instalar dependências
+RUN npm ci --only=production=false
+
+# Copiar código fonte
+COPY src ./src
+
+# Compilar TypeScript para JavaScript
+RUN npm run build
+
+# Remover dependências de desenvolvimento
+RUN npm prune --production
+
+# Estágio 2: Produção
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Instalar dumb-init para gerenciar sinais corretamente
+RUN apk add --no-cache dumb-init
+
+# Criar usuário não-root para segurança
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Copiar arquivos do estágio de build
+COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+
+# Criar diretórios necessários
+RUN mkdir -p logs uploads && \
+    chown -R nodejs:nodejs logs uploads
+
+# Trocar para usuário não-root
+USER nodejs
+
+# Expor porta da aplicação
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:5000/health', (r) => {r.statusCode === 200 ? process.exit(0) : process.exit(1)})"
+
+# Usar dumb-init para gerenciar sinais
+ENTRYPOINT ["dumb-init", "--"]
+
+# Comando para iniciar a aplicação - CORRIGIDO: .js em vez de .ts
+CMD ["node", "dist/server.js"]
