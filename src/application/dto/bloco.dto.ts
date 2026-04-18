@@ -1,6 +1,6 @@
 export interface CreateBlocoDto {
   nucleoId: string;
-  tipo: string; // ✅ String (validado com isTipoBloco)
+  tipo: string; // String (validado com isTipoBloco)
   titulo?: string;
   posicao?: number;
   configuracoes?: Record<string, any>;
@@ -18,7 +18,7 @@ export interface BlocoResponseDto {
   nucleoId: string;
   tipo: string;
   titulo: string | null;
-  posicao: number;
+  posicao: number; 
   configuracoes: Record<string, any>;
   createdAt: string;
   updatedAt: string;

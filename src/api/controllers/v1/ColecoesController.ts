@@ -24,6 +24,8 @@ import { DeleteItemHandler } from "../../../application/commands/colecoes/Delete
 import { DeleteItemCommand } from "../../../application/commands/colecoes/DeleteItemCommand";
 import { GetItemsByColecaoHandler } from "../../../application/queries/colecoes/GetItemsByColecaoHandler";
 import { GetItemsByColecaoQuery } from "../../../application/queries/colecoes/GetItemsByColecaoQuery";
+import { GetColecaoByIdHandler } from "../../../application/queries/colecoes/GetColecaoByIdHandler";
+import { GetColecaoByIdQuery } from "../../../application/queries/colecoes/GetColecaoByIdQuery";
 
 export class ColecoesController {
   constructor(
@@ -32,6 +34,7 @@ export class ColecoesController {
     private readonly updateColecaoHandler: UpdateColecaoHandler,
     private readonly deleteColecaoHandler: DeleteColecaoHandler,
     private readonly getColecoesByBlocoHandler: GetColecoesByBlocoHandler,
+    private readonly getColecaoByIdHandler: GetColecaoByIdHandler,
     // Campo
     private readonly createCampoHandler: CreateCampoHandler,
     private readonly updateCampoHandler: UpdateCampoHandler,
@@ -44,16 +47,23 @@ export class ColecoesController {
     private readonly getItemsByColecaoHandler: GetItemsByColecaoHandler,
   ) {}
 
-  //  COLEÇÃO
+  // COLEÇÃO
+
   async listByBloco(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      // 🔥 userId vem do token (usuário autenticado)
       const userId = req.user?.id;
       const blocoIdParam = req.params.blocoId;
       const blocoId =
         typeof blocoIdParam === "string" ? blocoIdParam : undefined;
-
+      console.log("🧪 userId:", userId, "blocoId:", blocoId); // <-- aqui
+      console.log(
+        "typeof userId:",
+        typeof userId,
+        "typeof blocoId:",
+        typeof blocoId,
+      );
       if (!userId || !blocoId) {
+        console.log("Validação falhou!"); // Adicionar
         return res.status(400).json({
           success: false,
           message: "userId e blocoId são obrigatórios",
@@ -130,7 +140,30 @@ export class ColecoesController {
     }
   }
 
-  //  CAMPO
+  async getColecaoById(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+
+      if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "ID inválido" });
+      }
+      if (!userId || typeof userId !== "string") {
+        return res
+          .status(401)
+          .json({ success: false, message: "Usuário não autenticado" });
+      }
+
+      const query = new GetColecaoByIdQuery(id, userId);
+      const result = await this.getColecaoByIdHandler.execute(query);
+      return res.json({ success: true, data: result });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  // CAMPO
+
   async getCamposByColecao(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { colecaoId } = req.params;
@@ -225,7 +258,8 @@ export class ColecoesController {
     }
   }
 
-  //  ITEM
+  // ITEM
+
   async getItemsByColecao(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const { colecaoId } = req.params;

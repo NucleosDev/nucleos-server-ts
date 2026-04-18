@@ -1,4 +1,3 @@
-// application/mappings/nucleo.mapping.ts
 import { Nucleo } from "../../domain/entities/Nucleo";
 import { NucleoDTO, NucleoResponseDto } from "../dto/nucleo.dto";
 

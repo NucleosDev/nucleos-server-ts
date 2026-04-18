@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import express from "express";
 import type { Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
@@ -420,7 +421,7 @@ process.on("uncaughtException", (err) => {
 });
 
 process.on("unhandledRejection", (reason: any) => {
-  logger.error("💥 Unhandled Rejection:", reason);
+  logger.error(" Unhandled Rejection:", reason);
   process.exit(1);
 });
 

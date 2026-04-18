@@ -1,4 +1,3 @@
-// src/api/controllers/v1/ListasController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { CreateListaHandler } from "../../../application/commands/listas/CreateListaHandler";
@@ -9,6 +8,8 @@ import { DeleteListaHandler } from "../../../application/commands/listas/DeleteL
 import { DeleteListaCommand } from "../../../application/commands/listas/DeleteListaCommand";
 import { GetListasByBlocoHandler } from "../../../application/queries/listas/GetListasByBlocoHandler";
 import { GetListasByBlocoQuery } from "../../../application/queries/listas/GetListasByBlocoQuery";
+import { GetListaByIdHandler } from "../../../application/queries/listas/GetListaByIdHandler";
+import { GetListaByIdQuery } from "../../../application/queries/listas/GetListaByIdQuery";
 import { CreateItemListaHandler } from "../../../application/commands/listas/CreateItemListaHandler";
 import { CreateItemListaCommand } from "../../../application/commands/listas/CreateItemListaCommand";
 import { UpdateItemListaHandler } from "../../../application/commands/listas/UpdateItemListaHandler";
@@ -33,6 +34,7 @@ export class ListasController {
     private readonly updateListaHandler: UpdateListaHandler,
     private readonly deleteListaHandler: DeleteListaHandler,
     private readonly getListasByBlocoHandler: GetListasByBlocoHandler,
+    private readonly getListaByIdHandler: GetListaByIdHandler,
     // Item
     private readonly createItemHandler: CreateItemListaHandler,
     private readonly updateItemHandler: UpdateItemListaHandler,
@@ -44,6 +46,35 @@ export class ListasController {
     private readonly deleteCategoriaHandler: DeleteCategoriaHandler,
     private readonly getCategoriasByListaHandler: GetCategoriasByListaHandler,
   ) {}
+
+  async getListaById(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
+
+      if (!id || typeof id !== "string") {
+        return res.status(400).json({ success: false, message: "ID inválido" });
+      }
+
+      const query = new GetListaByIdQuery(id, userId);
+      const result = await this.getListaByIdHandler.execute(query);
+      return res.json(result);
+    } catch (error: any) {
+      if (error) {
+        return res.status(404).json({ success: false, message: error.message });
+      }
+      if (error) {
+        return res.status(403).json({ success: false, message: error.message });
+      }
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
 
   //  LISTA
   async listByBloco(req: AuthRequest, res: Response): Promise<Response> {
@@ -66,7 +97,7 @@ export class ListasController {
       const query = new GetListasByBlocoQuery(blocoId, userId);
       const result = await this.getListasByBlocoHandler.execute(query);
 
-      // ✅ Retorna array diretamente
+      // Retorna array diretamente
       return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -99,7 +130,7 @@ export class ListasController {
       const command = new CreateListaCommand(userId, blocoId, nome, tipoLista);
       const result = await this.createListaHandler.execute(command);
 
-      // ✅ Retorna objeto diretamente
+      // Retorna objeto diretamente
       return res.status(201).json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -125,7 +156,7 @@ export class ListasController {
       const command = new UpdateListaCommand(id, userId, nome, tipoLista);
       const result = await this.updateListaHandler.execute(command);
 
-      // ✅ Retorna objeto diretamente
+      // Retorna objeto diretamente
       return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -176,7 +207,7 @@ export class ListasController {
       const query = new GetItemsByListaQuery(listaId, userId);
       const result = await this.getItemsByListaHandler.execute(query);
 
-      // ✅ Retorna array diretamente
+      // Retorna array diretamente
       return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -217,7 +248,7 @@ export class ListasController {
       );
       const result = await this.createItemHandler.execute(command);
 
-      // ✅ Retorna objeto diretamente
+      // Retorna objeto diretamente
       return res.status(201).json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -250,7 +281,7 @@ export class ListasController {
       );
       const result = await this.updateItemHandler.execute(command);
 
-      // ✅ Retorna objeto diretamente
+      // Retorna objeto diretamente
       return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -276,7 +307,7 @@ export class ListasController {
       const command = new ToggleItemCheckedCommand(id, userId, checked);
       const result = await this.toggleItemHandler.execute(command);
 
-      // ✅ Retorna objeto diretamente
+      // Retorna objeto diretamente
       return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -330,7 +361,7 @@ export class ListasController {
       const query = new GetCategoriasByListaQuery(listaId, userId);
       const result = await this.getCategoriasByListaHandler.execute(query);
 
-      // ✅ Retorna array diretamente
+      // Retorna array diretamente
       return res.json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });
@@ -363,7 +394,7 @@ export class ListasController {
       const command = new CreateCategoriaCommand(userId, listaId, nome, cor);
       const result = await this.createCategoriaHandler.execute(command);
 
-      // ✅ Retorna objeto diretamente
+      // Retorna objeto diretamente
       return res.status(201).json(result);
     } catch (error: any) {
       return res.status(400).json({ success: false, message: error.message });

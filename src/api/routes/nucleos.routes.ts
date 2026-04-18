@@ -7,15 +7,30 @@ import { DeleteNucleoHandler } from "../../application/commands/nucleos/DeleteNu
 import { GetNucleosHandler } from "../../application/queries/nucleos/GetNucleosHandler";
 import { GetNucleoByIdHandler } from "../../application/queries/nucleos/GetNucleoByIdHandler";
 import { NucleoRepository } from "../../infrastructure/persistence/repositories/NucleoRepository";
+import { NucleoIconRepository } from "../../infrastructure/persistence/repositories/NucleoIconRepository";
 
+// Instâncias manuais (SEM TypeDI)
 const nucleoRepository = new NucleoRepository();
+const nucleoIconRepository = new NucleoIconRepository();
 
-// Handlers SEM CurrentUserService
-const createNucleoHandler = new CreateNucleoHandler(nucleoRepository);
-const updateNucleoHandler = new UpdateNucleoHandler(nucleoRepository);
+// Handlers com as dependências corretas
+const createNucleoHandler = new CreateNucleoHandler(
+  nucleoRepository,
+  nucleoIconRepository,
+);
+const updateNucleoHandler = new UpdateNucleoHandler(
+  nucleoRepository,
+  nucleoIconRepository,
+);
 const deleteNucleoHandler = new DeleteNucleoHandler(nucleoRepository);
-const getNucleosHandler = new GetNucleosHandler(nucleoRepository);
-const getNucleoByIdHandler = new GetNucleoByIdHandler(nucleoRepository);
+const getNucleosHandler = new GetNucleosHandler(
+  nucleoRepository,
+  nucleoIconRepository,
+);
+const getNucleoByIdHandler = new GetNucleoByIdHandler(
+  nucleoRepository,
+  nucleoIconRepository,
+);
 
 const nucleosController = new NucleosController(
   createNucleoHandler,

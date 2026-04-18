@@ -1,4 +1,3 @@
-// src/api/controllers/v1/CalendarioController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { CreateEventoHandler } from "../../../application/commands/calendario/CreateEventoHandler";

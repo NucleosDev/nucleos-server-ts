@@ -6,6 +6,7 @@ import { CreateColecaoHandler } from "../../application/commands/colecoes/Create
 import { UpdateColecaoHandler } from "../../application/commands/colecoes/UpdateColecaoHandler";
 import { DeleteColecaoHandler } from "../../application/commands/colecoes/DeleteColecaoHandler";
 import { GetColecoesByBlocoHandler } from "../../application/queries/colecoes/GetColecoesByBlocoHandler";
+import { GetColecaoByIdHandler } from "../../application/queries/colecoes/GetColecaoByIdHandler";
 import { CreateCampoHandler } from "../../application/commands/colecoes/CreateCampoHandler";
 import { UpdateCampoHandler } from "../../application/commands/colecoes/UpdateCampoHandler";
 import { DeleteCampoHandler } from "../../application/commands/colecoes/DeleteCampoHandler";
@@ -27,6 +28,7 @@ const deleteColecaoHandler = new DeleteColecaoHandler(colecaoRepository);
 const getColecoesByBlocoHandler = new GetColecoesByBlocoHandler(
   colecaoRepository,
 );
+const getColecaoByIdHandler = new GetColecaoByIdHandler(); // ⬅️ NOVO
 
 // Campo
 const createCampoHandler = new CreateCampoHandler(colecaoRepository);
@@ -44,11 +46,13 @@ const getItemsByColecaoHandler = new GetItemsByColecaoHandler(
   colecaoRepository,
 );
 
+// ⚠️ Atenção: agora são 13 parâmetros, na ordem correta!
 const colecoesController = new ColecoesController(
   createColecaoHandler,
   updateColecaoHandler,
   deleteColecaoHandler,
   getColecoesByBlocoHandler,
+  getColecaoByIdHandler, // ⬅️ NOVO
   createCampoHandler,
   updateCampoHandler,
   deleteCampoHandler,
@@ -61,13 +65,21 @@ const colecoesController = new ColecoesController(
 
 export const colecoesRoutes = Router();
 
-//  COLEÇÃO
+// ===========================================================================
+// COLEÇÃO
+// ===========================================================================
+
 colecoesRoutes.get("/bloco/:blocoId", authenticate, (req, res, next) => {
   colecoesController.listByBloco(req as AuthRequest, res).catch(next);
 });
 
 colecoesRoutes.post("/", authenticate, (req, res, next) => {
   colecoesController.createColecao(req as AuthRequest, res).catch(next);
+});
+
+// ⬇️ NOVA ROTA: obter uma coleção específica por ID
+colecoesRoutes.get("/:id", authenticate, (req, res, next) => {
+  colecoesController.getColecaoById(req as AuthRequest, res).catch(next);
 });
 
 colecoesRoutes.put("/:id", authenticate, (req, res, next) => {
@@ -78,7 +90,10 @@ colecoesRoutes.delete("/:id", authenticate, (req, res, next) => {
   colecoesController.deleteColecao(req as AuthRequest, res).catch(next);
 });
 
-//  CAMPO
+// ===========================================================================
+// CAMPO
+// ===========================================================================
+
 colecoesRoutes.get("/:colecaoId/campos", authenticate, (req, res, next) => {
   colecoesController.getCamposByColecao(req as AuthRequest, res).catch(next);
 });
@@ -95,7 +110,10 @@ colecoesRoutes.delete("/campos/:id", authenticate, (req, res, next) => {
   colecoesController.deleteCampo(req as AuthRequest, res).catch(next);
 });
 
-//  ITEM
+// ===========================================================================
+// ITEM
+// ===========================================================================
+
 colecoesRoutes.get("/:colecaoId/items", authenticate, (req, res, next) => {
   colecoesController.getItemsByColecao(req as AuthRequest, res).catch(next);
 });

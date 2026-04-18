@@ -1,4 +1,3 @@
-// src/api/controllers/v1/BlocosController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { CreateBlocoHandler } from "../../../application/commands/blocos/CreateBlocoHandler";
@@ -18,7 +17,7 @@ import {
   isTipoBloco,
 } from "../../../domain/value-objects/TipoBloco";
 import { logger } from "../../../shared/utils/logger";
-console.log("✅ BlocosController CARREGADO");
+
 export class BlocosController {
   constructor(
     private readonly createBlocoHandler: CreateBlocoHandler,
@@ -29,9 +28,8 @@ export class BlocosController {
     private readonly getBlocoByIdHandler: GetBlocoByIdHandler,
   ) {}
 
-  // =====
-  // 📋 LISTAR BLOCOS POR NÚCLEO (GET /blocos/nucleo/:nucleoId)
-  // =====
+  // LISTAR BLOCOS POR NÚCLEO (GET /blocos/nucleo/:nucleoId)
+
   async getByNucleo(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const userId = req.user?.id;
@@ -56,7 +54,7 @@ export class BlocosController {
 
       return res.json(result); // Retorna array diretamente
     } catch (error: any) {
-      logger.error("❌ Erro ao listar blocos:", error);
+      logger.error("Erro ao listar blocos:", error);
       return res.status(400).json({
         success: false,
         message: error.message,
@@ -64,9 +62,8 @@ export class BlocosController {
     }
   }
 
-  // =====
-  // 🔍 BUSCAR BLOCO POR ID (GET /blocos/:id)
-  // =====
+  //  BUSCAR BLOCO POR ID (GET /blocos/:id)
+
   async getById(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const userId = req.user?.id;
@@ -91,7 +88,7 @@ export class BlocosController {
 
       return res.json(result);
     } catch (error: any) {
-      logger.error("❌ Erro ao buscar bloco:", error);
+      logger.error("Erro ao buscar bloco:", error);
       return res.status(404).json({
         success: false,
         message: error.message,
@@ -99,9 +96,8 @@ export class BlocosController {
     }
   }
 
-  // =====
-  // ✨ CRIAR BLOCO (POST /blocos)
-  // =====
+  // CRIAR BLOCO (POST /blocos)
+
   async create(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const userId = req.user?.id;
@@ -147,11 +143,11 @@ export class BlocosController {
 
       const result = await this.createBlocoHandler.execute(command);
 
-      logger.info(`✅ Bloco criado: ${tipo} no núcleo ${nucleoId}`);
+      logger.info(`Bloco criado: ${tipo} no núcleo ${nucleoId}`);
 
       return res.status(201).json(result);
     } catch (error: any) {
-      logger.error("❌ Erro ao criar bloco:", error);
+      logger.error("Erro ao criar bloco:", error);
       return res.status(400).json({
         success: false,
         message: error.message,
@@ -159,9 +155,8 @@ export class BlocosController {
     }
   }
 
-  // =====
-  // ✏️ ATUALIZAR BLOCO (PUT /blocos/:id)
-  // =====
+  // ATUALIZAR BLOCO (PUT /blocos/:id)
+
   async update(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const userId = req.user?.id;
@@ -201,11 +196,11 @@ export class BlocosController {
 
       const result = await this.updateBlocoHandler.execute(command);
 
-      logger.info(`✅ Bloco atualizado: ${id}`);
+      logger.info(`Bloco atualizado: ${id}`);
 
       return res.json(result);
     } catch (error: any) {
-      logger.error("❌ Erro ao atualizar bloco:", error);
+      logger.error("Erro ao atualizar bloco:", error);
       return res.status(400).json({
         success: false,
         message: error.message,
@@ -213,9 +208,8 @@ export class BlocosController {
     }
   }
 
-  // =====
-  // 🗑️ DELETAR BLOCO (DELETE /blocos/:id)
-  // =====
+  // DELETAR BLOCO (DELETE /blocos/:id)
+
   async delete(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const userId = req.user?.id;
@@ -238,11 +232,11 @@ export class BlocosController {
       const command = new DeleteBlocoCommand(id, userId);
       await this.deleteBlocoHandler.execute(command);
 
-      logger.info(`✅ Bloco deletado: ${id}`);
+      logger.info(`Bloco deletado: ${id}`);
 
       return res.status(204).send();
     } catch (error: any) {
-      logger.error("❌ Erro ao deletar bloco:", error);
+      logger.error("Erro ao deletar bloco:", error);
       return res.status(400).json({
         success: false,
         message: error.message,
@@ -250,9 +244,8 @@ export class BlocosController {
     }
   }
 
-  // =====
-  // 🔄 REORDENAR BLOCOS (POST /blocos/reorder)
-  // =====
+  // REORDENAR BLOCOS (POST /blocos/reorder)
+
   async reorder(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const userId = req.user?.id;
@@ -282,14 +275,14 @@ export class BlocosController {
       const command = new ReorderBlocosCommand(nucleoId, userId, orders);
       await this.reorderBlocosHandler.execute(command);
 
-      logger.info(`✅ Blocos reordenados no núcleo: ${nucleoId}`);
+      logger.info(`Blocos reordenados no núcleo: ${nucleoId}`);
 
       return res.json({
         success: true,
         message: "Blocos reordenados com sucesso",
       });
     } catch (error: any) {
-      logger.error("❌ Erro ao reordenar blocos:", error);
+      logger.error("Erro ao reordenar blocos:", error);
       return res.status(400).json({
         success: false,
         message: error.message,

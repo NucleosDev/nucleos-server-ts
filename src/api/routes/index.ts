@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authRoutes } from "./auth.routes";
 import { router as usersRoutes } from "./users.routes";
-console.log("🔥🔥🔥 INDEX.TS ESTÁ SENDO CARREGADO 🔥🔥🔥");
+console.log("rotas carregadas");
 
 import "express";
 
@@ -26,7 +26,7 @@ import { habitosRoutes } from "./habitos.routes";
 // import { progressRoutes } from './progress.routes';
 // import { notificationsRoutes } from './notifications.routes';
 // import { planRoutes } from './plan.routes';
-// import { Router as Tim } from './timers.routes';
+import { router as timersRoutes } from "./timers.routes";
 import { calendarioRoutes } from "./calendario.routes";
 // import { insightsRoutes } from './insights.routes';
 // import { adminRoutes } from './admin.routes';
@@ -51,7 +51,7 @@ router.use("/habitos", habitosRoutes);
 router.use("/users", usersRoutes);
 // router.use('/notifications', notificationsRoutes);
 // router.use('/plans', plansRoutes);
-// router.use('/timers', timersRoutes);
+router.use("/timers", timersRoutes);
 router.use("/calendario", calendarioRoutes);
 // router.use('/insights', insightsRoutes);
 // router.use('/admin', adminRoutes);

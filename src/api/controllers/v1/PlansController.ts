@@ -1,9 +1,8 @@
-// src/api/controllers/v1/PlansController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { logger } from "../../../shared/utils/logger";
-import { randomUUID } from "crypto";
+
 
 export class PlansController {
   static async list(req: AuthRequest, res: Response): Promise<void> {

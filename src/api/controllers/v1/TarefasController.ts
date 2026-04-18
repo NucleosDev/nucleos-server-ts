@@ -1,4 +1,3 @@
-// src/api/controllers/v1/TarefasController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { CreateTarefaHandler } from "../../../application/commands/tarefas/CreateTarefaHandler";

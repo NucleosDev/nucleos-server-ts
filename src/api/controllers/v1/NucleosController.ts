@@ -12,6 +12,7 @@ import { GetNucleosQuery } from "../../../application/queries/nucleos/GetNucleos
 import { GetNucleoByIdHandler } from "../../../application/queries/nucleos/GetNucleoByIdHandler";
 import { GetNucleoByIdQuery } from "../../../application/queries/nucleos/GetNucleoByIdQuery";
 import { logger } from "../../../shared/utils/logger";
+import { isValidUuid } from "../../../shared/utils/uuid";
 
 export class NucleosController {
   constructor(
