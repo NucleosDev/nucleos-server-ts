@@ -17,7 +17,7 @@ export class TarefasController {
     private readonly concluirTarefaHandler: ConcluirTarefaHandler,
     private readonly deleteTarefaHandler: DeleteTarefaHandler,
     private readonly getTarefasByBlocoHandler: GetTarefasByBlocoHandler,
-    private readonly getTarefasVencendoHandler: GetTarefasVencendoHandler, // ✅ Adicionado
+    private readonly getTarefasVencendoHandler: GetTarefasVencendoHandler, //  Adicionado
   ) {}
 
   async listByBloco(req: AuthRequest, res: Response): Promise<Response> {
@@ -46,7 +46,7 @@ export class TarefasController {
     }
   }
 
-  // ✅ Método listVencendo adicionado
+  //  Método listVencendo adicionado
   async listVencendo(req: AuthRequest, res: Response): Promise<Response> {
     try {
       const userId = req.user?.id;

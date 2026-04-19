@@ -129,13 +129,13 @@ export const isTest = env.NODE_ENV === "test";
 // LOG DE CONFIGURAÇÃO (apenas em desenvolvimento)
 
 if (isDevelopment) {
-  console.log("✅ Variáveis de ambiente carregadas com sucesso");
-  console.log(`📡 Ambiente: ${env.NODE_ENV}`);
-  console.log(`🔌 Porta: ${env.PORT}`);
+  console.log(" Variáveis de ambiente carregadas com sucesso");
+  console.log(`Ambiente: ${env.NODE_ENV}`);
+  console.log(`Porta: ${env.PORT}`);
   console.log(
-    `🗄️  Banco: ${env.SUPABASE_HOST}:${env.SUPABASE_PORT}/${env.SUPABASE_DATABASE}`,
+    `Banco: ${env.SUPABASE_HOST}:${env.SUPABASE_PORT}/${env.SUPABASE_DATABASE}`,
   );
-  console.log(`🔐 JWT: ${env.JWT_KEY ? "Configurado" : "Não configurado"}`);
-  console.log(`📧 Email: ${env.SMTP_USER}`);
-  console.log(`🌐 CORS: ${corsConfig.origins.join(", ")}`);
+  console.log(`JWT: ${env.JWT_KEY ? "Configurado" : "Não configurado"}`);
+  console.log(`Email: ${env.SMTP_USER}`);
+  console.log(`CORS: ${corsConfig.origins.join(", ")}`);
 }

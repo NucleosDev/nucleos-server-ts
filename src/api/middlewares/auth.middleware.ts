@@ -104,7 +104,7 @@ export const authMiddleware = (
 
     (req as AuthRequest).user = user;
     logger.debug(
-      `✅ [${requestId}] Token validado: ${user.email} (${user.role})`,
+      ` [${requestId}] Token validado: ${user.email} (${user.role})`,
     );
     next();
   } catch (error: any) {
@@ -244,7 +244,7 @@ export const authMiddlewareWithDbCheck = async (
     }
 
     (req as AuthRequest).user = user;
-    logger.debug(`✅ [${requestId}] Token validado (com DB): ${user.email}`);
+    logger.debug(` [${requestId}] Token validado (com DB): ${user.email}`);
     next();
   } catch (error: any) {
     if (error instanceof jwt.TokenExpiredError) {

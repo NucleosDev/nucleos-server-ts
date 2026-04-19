@@ -4,6 +4,8 @@
 //   testDatabaseConnection,
 // } from "../../src/infrastructure/persistence/db/connection";
 
+// import { userInfo } from "node:os";
+
 // describe("Database connection", () => {
 //   it("deve conectar ao banco", async () => {
 //     const connected = await testDatabaseConnection();

@@ -9,7 +9,7 @@ const router = Router();
 // Todas as rotas exigem autenticação
 router.use(authenticate);
 
-// ✅ CORRIGIDO: Remover o "/users" duplicado
+//  CORRIGIDO: Remover o "/users" duplicado
 // Perfil
 router.get("/me", (req, res, next) => {
   UsersController.getCurrentUser(req as AuthRequest, res).catch(next);

@@ -119,6 +119,6 @@
 //       }
 //     });
 
-//     logger.info("✅ Background jobs scheduled");
+//     logger.info(" Background jobs scheduled");
 //   }
 // }

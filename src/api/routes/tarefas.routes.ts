@@ -11,7 +11,7 @@ import { TarefaRepository } from "../../infrastructure/persistence/repositories/
 
 const tarefaRepository = new TarefaRepository();
 
-// ✅ Handlers SEM CurrentUserService
+//  Handlers SEM CurrentUserService
 const createTarefaHandler = new CreateTarefaHandler(tarefaRepository);
 const concluirTarefaHandler = new ConcluirTarefaHandler(tarefaRepository);
 const deleteTarefaHandler = new DeleteTarefaHandler(tarefaRepository);

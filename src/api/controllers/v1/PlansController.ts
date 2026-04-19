@@ -3,7 +3,6 @@ import { AuthRequest } from "../../middlewares/auth.middleware";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { logger } from "../../../shared/utils/logger";
 
-
 export class PlansController {
   static async list(req: AuthRequest, res: Response): Promise<void> {
     try {

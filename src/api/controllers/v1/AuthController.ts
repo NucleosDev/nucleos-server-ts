@@ -294,7 +294,7 @@ export class AuthController {
         });
 
         logger.info(
-          `✅ Novo usuário registrado: ${normalizedEmail} (ID: ${userId})`,
+          ` Novo usuário registrado: ${normalizedEmail} (ID: ${userId})`,
         );
 
         // Resposta no formato que o frontend espera
@@ -466,7 +466,7 @@ export class AuthController {
             : env.JWT_EXPIRES_MINUTES * 60 * 1000),
       ).toISOString();
 
-      logger.info(`✅ Login realizado: ${user.email} (ID: ${user.id})`);
+      logger.info(` Login realizado: ${user.email} (ID: ${user.id})`);
 
       // Resposta no formato que o frontend espera
       res.json({

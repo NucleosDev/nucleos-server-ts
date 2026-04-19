@@ -5,7 +5,7 @@ import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 
 export class DeleteListaHandler {
-  constructor(private readonly listaRepository: IListaRepository) {} // ✅ Apenas 1 parâmetro
+  constructor(private readonly listaRepository: IListaRepository) {} //  Apenas 1 parâmetro
 
   async execute(command: DeleteListaCommand): Promise<void> {
     const { id, userId } = command;

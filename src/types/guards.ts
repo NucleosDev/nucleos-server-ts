@@ -1,4 +1,3 @@
-// src/types/guards.ts
 import { UserPayload } from "./auth";
 
 export function isUserPayload(payload: unknown): payload is UserPayload {
@@ -6,7 +5,7 @@ export function isUserPayload(payload: unknown): payload is UserPayload {
     return false;
   }
 
-  // 🔥 CORREÇÃO: Converter para unknown primeiro, depois para Record
+  // CORREÇÃO: Converter para unknown primeiro, depois para Record
   const p = payload as unknown as Record<string, unknown>;
 
   return (
@@ -28,7 +27,7 @@ export function isAuthUserPayload(
     return false;
   }
 
-  // 🔥 CORREÇÃO: Converter para unknown primeiro, depois para Record
+  // CORREÇÃO: Converter para unknown primeiro, depois para Record
   const p = payload as unknown as Record<string, unknown>;
 
   return (

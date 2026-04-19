@@ -101,7 +101,7 @@ export class NucleosController {
         });
       }
 
-      // ✅ PASSANDO O userId COMO PRIMEIRO PARÂMETRO
+      // PASSANDO O userId COMO PRIMEIRO PARÂMETRO
       const command = new CreateNucleoCommand(
         userId, // 1º - userId
         nome, // 2º - nome
@@ -113,7 +113,7 @@ export class NucleosController {
       );
 
       const result = await this.createNucleoHandler.execute(command);
-      console.log("✅ Núcleo criado:", result.id);
+      console.log(" Núcleo criado:", result.id);
 
       return res.status(201).json(result);
     } catch (error: any) {
@@ -146,7 +146,7 @@ export class NucleosController {
         });
       }
 
-      // ✅ PASSANDO O userId COMO SEGUNDO PARÂMETRO
+      // PASSANDO O userId COMO SEGUNDO PARÂMETRO
       const command = new UpdateNucleoCommand(
         id, // 1º - id
         userId, // 2º - userId
@@ -188,7 +188,7 @@ export class NucleosController {
         });
       }
 
-      // ✅ PASSANDO O userId COMO SEGUNDO PARÂMETRO
+      //  PASSANDO O userId COMO SEGUNDO PARÂMETRO
       const command = new DeleteNucleoCommand(id, userId);
       await this.deleteNucleoHandler.execute(command);
 

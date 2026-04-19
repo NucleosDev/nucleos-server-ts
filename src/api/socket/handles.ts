@@ -17,9 +17,7 @@ export const setupSocketHandlers = (io: Server, socket: AuthSocket) => {
     `🔌 Socket ${socket.id} conectado - Usuário: ${socket.user?.email}`,
   );
 
-
   // EVENTOS DE SALA (NÚCLEO)
-
 
   // Entrar em um núcleo (para receber atualizações)
   socket.on("nucleo:join", (nucleoId: string) => {
@@ -32,7 +30,7 @@ export const setupSocketHandlers = (io: Server, socket: AuthSocket) => {
     }
     userRooms.get(userId)!.add(roomName);
 
-    logger.debug(`📡 Usuário ${userId} entrou na sala ${roomName}`);
+    logger.debug(`Usuário ${userId} entrou na sala ${roomName}`);
 
     // Notificar outros usuários na sala
     socket.to(roomName).emit("user:joined", {
@@ -60,15 +58,13 @@ export const setupSocketHandlers = (io: Server, socket: AuthSocket) => {
     });
   });
 
-
   // EVENTOS DE TAREFAS
-
 
   socket.on(
     "tarefa:completed",
     (data: { tarefaId: string; nucleoId: string; xpGained: number }) => {
       const roomName = `nucleo:${data.nucleoId}`;
-      logger.info(`✅ Tarefa ${data.tarefaId} concluída por ${userId}`);
+      logger.info(` Tarefa ${data.tarefaId} concluída por ${userId}`);
 
       io.to(roomName).emit("tarefa:completed", {
         tarefaId: data.tarefaId,
@@ -80,9 +76,7 @@ export const setupSocketHandlers = (io: Server, socket: AuthSocket) => {
     },
   );
 
-
   // EVENTOS DE BLOCOS
-
 
   socket.on(
     "bloco:updated",
@@ -100,9 +94,7 @@ export const setupSocketHandlers = (io: Server, socket: AuthSocket) => {
     },
   );
 
-
   // EVENTOS DE TIMER
-
 
   socket.on(
     "timer:start",
@@ -142,9 +134,7 @@ export const setupSocketHandlers = (io: Server, socket: AuthSocket) => {
     });
   });
 
-
   // EVENTOS DE COLABORAÇÃO
-
 
   socket.on("user:typing", (data: { nucleoId: string; isTyping: boolean }) => {
     const roomName = `nucleo:${data.nucleoId}`;
@@ -156,9 +146,7 @@ export const setupSocketHandlers = (io: Server, socket: AuthSocket) => {
     });
   });
 
-
   // DESCONEXÃO
-
 
   socket.on("disconnect", () => {
     logger.info(

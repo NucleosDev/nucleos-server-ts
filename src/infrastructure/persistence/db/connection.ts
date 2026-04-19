@@ -43,7 +43,7 @@ export async function query(text: string, params?: any[]) {
   return result;
 }
 
-// ✅ ESSENCIAL (faltava)
+//  ESSENCIAL (faltava)
 export async function testDatabaseConnection(): Promise<boolean> {
   try {
     await pool.query("SELECT 1");

@@ -1,5 +1,3 @@
-console.log("🚀🚀🚀 BLOCOS.ROUTES.TS ESTÁ SENDO CARREGADO 🚀🚀🚀");
-
 import { Router } from "express";
 import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
 import { BlocosController } from "../controllers/v1/BlocosController";

@@ -168,7 +168,7 @@ export class UsersController {
 
       const user = result.rows[0];
 
-      logger.info(`✅ Perfil atualizado: ${user.email}`);
+      logger.info(` Perfil atualizado: ${user.email}`);
 
       res.json({
         id: user.id,
@@ -263,7 +263,7 @@ export class UsersController {
         values,
       );
 
-      logger.info(`✅ Preferências atualizadas: ${userId}`);
+      logger.info(` Preferências atualizadas: ${userId}`);
 
       res.json({
         success: true,
@@ -654,7 +654,7 @@ export class UsersController {
         [userId],
       );
 
-      logger.info(`✅ Conta reativada: ${userId}`);
+      logger.info(` Conta reativada: ${userId}`);
 
       res.json({
         success: true,

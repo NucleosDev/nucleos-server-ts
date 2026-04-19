@@ -24,12 +24,12 @@ export class UpdateBlocoHandler {
       throw new NotFoundException("Bloco", id);
     }
 
-    // ✅ Atualizar titulo (string)
+    //  Atualizar titulo (string)
     if (titulo !== undefined) {
       bloco.updateTitulo(titulo);
     }
 
-    // ✅ Validar e converter tipo antes de atualizar
+    //  Validar e converter tipo antes de atualizar
     if (tipo !== undefined) {
       if (!isTipoBloco(tipo)) {
         throw new Error(`Tipo de bloco inválido: ${tipo}`);
@@ -37,12 +37,12 @@ export class UpdateBlocoHandler {
       bloco.updateTipo(tipo as TipoBloco);
     }
 
-    // ✅ Atualizar posicao (number)
+    //  Atualizar posicao (number)
     if (posicao !== undefined) {
       bloco.updatePosicao(posicao);
     }
 
-    // ✅ Atualizar configuracoes
+    //  Atualizar configuracoes
     if (configuracoes !== undefined) {
       bloco.updateConfiguracoes(configuracoes);
     }

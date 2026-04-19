@@ -52,7 +52,7 @@ export class CreateBlocoHandler {
       resultadoIsTipoBloco,
     );
 
-    // ✅ Validar e converter tipo
+    //  Validar e converter tipo
     if (!resultadoIsTipoBloco) {
       console.error("❌ [CreateBlocoHandler] Tipo inválido detectado!");
       console.error("❌ Tipo recebido:", tipo);
@@ -76,7 +76,7 @@ export class CreateBlocoHandler {
 
     await this.blocoRepository.save(bloco);
 
-    console.log("✅ [CreateBlocoHandler] Bloco criado com sucesso:", bloco.id);
+    console.log(" [CreateBlocoHandler] Bloco criado com sucesso:", bloco.id);
 
     return {
       id: bloco.id,
