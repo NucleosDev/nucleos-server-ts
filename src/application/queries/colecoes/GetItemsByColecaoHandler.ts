@@ -1,4 +1,3 @@
-// application/queries/colecoes/GetItemsByColecaoHandler.ts
 import { IColecaoRepository } from "../../../domain/repositories/IColecaoRepository";
 import { ItemComValoresResponseDto } from "../../dto/colecao.dto";
 import { GetItemsByColecaoQuery } from "./GetItemsByColecaoQuery";
@@ -12,7 +11,7 @@ export class GetItemsByColecaoHandler {
   async execute(
     query: GetItemsByColecaoQuery,
   ): Promise<ItemComValoresResponseDto[]> {
-    const { colecaoId, userId } = query;
+    const { userId, colecaoId } = query; // ORDEM CORRETA: userId primeiro
 
     if (!userId) {
       throw new Error("Usuário não autenticado");

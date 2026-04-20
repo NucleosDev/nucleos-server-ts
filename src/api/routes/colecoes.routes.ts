@@ -65,35 +65,18 @@ const colecoesController = new ColecoesController(
 
 export const colecoesRoutes = Router();
 
-// ===========================================================================
-// COLEÇÃO
-// ===========================================================================
-
+// ==================== COLEÇÕES ====================
+// Rota de listagem por bloco (específica)
 colecoesRoutes.get("/bloco/:blocoId", authenticate, (req, res, next) => {
   colecoesController.listByBloco(req as AuthRequest, res).catch(next);
 });
 
+// Criação de coleção
 colecoesRoutes.post("/", authenticate, (req, res, next) => {
   colecoesController.createColecao(req as AuthRequest, res).catch(next);
 });
 
-// ⬇️ NOVA ROTA: obter uma coleção específica por ID
-colecoesRoutes.get("/:id", authenticate, (req, res, next) => {
-  colecoesController.getColecaoById(req as AuthRequest, res).catch(next);
-});
-
-colecoesRoutes.put("/:id", authenticate, (req, res, next) => {
-  colecoesController.updateColecao(req as AuthRequest, res).catch(next);
-});
-
-colecoesRoutes.delete("/:id", authenticate, (req, res, next) => {
-  colecoesController.deleteColecao(req as AuthRequest, res).catch(next);
-});
-
-// ===========================================================================
-// CAMPO
-// ===========================================================================
-
+// ==================== CAMPOS (ANTES DO :id) ====================
 colecoesRoutes.get("/:colecaoId/campos", authenticate, (req, res, next) => {
   colecoesController.getCamposByColecao(req as AuthRequest, res).catch(next);
 });
@@ -110,10 +93,7 @@ colecoesRoutes.delete("/campos/:id", authenticate, (req, res, next) => {
   colecoesController.deleteCampo(req as AuthRequest, res).catch(next);
 });
 
-// ===========================================================================
-// ITEM
-// ===========================================================================
-
+// ==================== ITENS (ANTES DO :id) ====================
 colecoesRoutes.get("/:colecaoId/items", authenticate, (req, res, next) => {
   colecoesController.getItemsByColecao(req as AuthRequest, res).catch(next);
 });
@@ -128,4 +108,17 @@ colecoesRoutes.put("/items/:id", authenticate, (req, res, next) => {
 
 colecoesRoutes.delete("/items/:id", authenticate, (req, res, next) => {
   colecoesController.deleteItem(req as AuthRequest, res).catch(next);
+});
+
+// ==================== ROTAS COM :id (POR ÚLTIMO) ====================
+colecoesRoutes.get("/:id", authenticate, (req, res, next) => {
+  colecoesController.getColecaoById(req as AuthRequest, res).catch(next);
+});
+
+colecoesRoutes.put("/:id", authenticate, (req, res, next) => {
+  colecoesController.updateColecao(req as AuthRequest, res).catch(next);
+});
+
+colecoesRoutes.delete("/:id", authenticate, (req, res, next) => {
+  colecoesController.deleteColecao(req as AuthRequest, res).catch(next);
 });

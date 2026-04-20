@@ -54,7 +54,7 @@ export class UpdateItemHandler {
       );
 
       if (existing.rows.length > 0) {
-        // Atualizar
+        // Atualizar valor existente
         switch (campo.tipo_campo) {
           case "texto":
             await pool.query(
@@ -82,20 +82,20 @@ export class UpdateItemHandler {
             break;
         }
       } else {
-        // Criar novo
+        // Criar novo valor (sem created_at)
         const valorId = randomUUID();
         switch (campo.tipo_campo) {
           case "texto":
             await pool.query(
-              `INSERT INTO item_valores (id, item_id, campo_id, valor_texto, created_at)
-               VALUES ($1, $2, $3, $4, NOW())`,
+              `INSERT INTO item_valores (id, item_id, campo_id, valor_texto)
+               VALUES ($1, $2, $3, $4)`,
               [valorId, id, campo.id, valor?.toString() || null],
             );
             break;
           case "numero":
             await pool.query(
-              `INSERT INTO item_valores (id, item_id, campo_id, valor_numerico, created_at)
-               VALUES ($1, $2, $3, $4, NOW())`,
+              `INSERT INTO item_valores (id, item_id, campo_id, valor_numerico)
+               VALUES ($1, $2, $3, $4)`,
               [
                 valorId,
                 id,
@@ -106,15 +106,15 @@ export class UpdateItemHandler {
             break;
           case "data":
             await pool.query(
-              `INSERT INTO item_valores (id, item_id, campo_id, valor_data, created_at)
-               VALUES ($1, $2, $3, $4, NOW())`,
+              `INSERT INTO item_valores (id, item_id, campo_id, valor_data)
+               VALUES ($1, $2, $3, $4)`,
               [valorId, id, campo.id, valor ? new Date(valor) : null],
             );
             break;
           case "booleano":
             await pool.query(
-              `INSERT INTO item_valores (id, item_id, campo_id, valor_booleano, created_at)
-               VALUES ($1, $2, $3, $4, NOW())`,
+              `INSERT INTO item_valores (id, item_id, campo_id, valor_booleano)
+               VALUES ($1, $2, $3, $4)`,
               [
                 valorId,
                 id,
@@ -129,13 +129,16 @@ export class UpdateItemHandler {
 
     await pool.query(`UPDATE itens SET updated_at = NOW() WHERE id = $1`, [id]);
 
+    const updatedItem = await pool.query(
+      `SELECT created_at FROM itens WHERE id = $1`,
+      [id],
+    );
+
     return {
       id,
       colecaoId,
       valores: valoresMap,
-      createdAt: (
-        await pool.query(`SELECT created_at FROM itens WHERE id = $1`, [id])
-      ).rows[0].created_at,
+      createdAt: updatedItem.rows[0].created_at,
       updatedAt: new Date().toISOString(),
     };
   }

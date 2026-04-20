@@ -1,4 +1,3 @@
-// src/application/queries/colecoes/GetColecaoByIdHandler.ts
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
@@ -8,13 +7,12 @@ import { Campo } from "../../../domain/entities/Campo";
 
 export class GetColecaoByIdHandler {
   async execute(query: GetColecaoByIdQuery): Promise<any> {
-    const { colecaoId, userId } = query;
+    const { userId, colecaoId } = query;
 
     if (!userId) {
       throw new Error("Usuário não autenticado");
     }
 
-    // Verificar permissão e obter dados da coleção
     const permissaoQuery = await pool.query(
       `SELECT c.id, c.bloco_id, c.nome, c.created_at, c.updated_at,
               n.user_id AS owner_id
@@ -35,7 +33,6 @@ export class GetColecaoByIdHandler {
       throw new ForbiddenException("Sem permissão para acessar esta coleção");
     }
 
-    // Reconstituir entidade Colecao
     const colecao = Colecao.reconstitute({
       id: row.id,
       blocoId: row.bloco_id,
@@ -44,7 +41,6 @@ export class GetColecaoByIdHandler {
       updatedAt: row.updated_at,
     });
 
-    // Buscar campos associados e reconstituir entidades Campo
     const camposQuery = await pool.query(
       `SELECT id, colecao_id, nome, tipo_campo, created_at, updated_at
        FROM campos
@@ -64,7 +60,6 @@ export class GetColecaoByIdHandler {
       }),
     );
 
-    // Retornar um objeto combinado (ou você pode criar um DTO específico)
     return {
       ...colecao.toJSON(),
       campos: campos.map((c) => c.toJSON()),

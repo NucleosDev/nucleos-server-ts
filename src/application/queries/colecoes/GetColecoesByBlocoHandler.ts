@@ -9,13 +9,16 @@ export class GetColecoesByBlocoHandler {
   constructor(private readonly colecaoRepository: IColecaoRepository) {}
 
   async execute(query: GetColecoesByBlocoQuery): Promise<ColecaoResponseDto[]> {
-    const { blocoId, userId } = query;
+    const { userId, blocoId } = query;
+
+    console.log(
+      `📥 [GetColecoesByBloco] userId: ${userId} blocoId: ${blocoId}`,
+    );
 
     if (!userId) {
       throw new Error("Usuário não autenticado");
     }
 
-    // Verificar permissão
     const blocoCheck = await pool.query(
       `SELECT n.user_id FROM blocos b
        JOIN nucleos n ON n.id = b.nucleo_id

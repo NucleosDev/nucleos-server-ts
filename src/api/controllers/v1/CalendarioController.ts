@@ -62,12 +62,10 @@ export class CalendarioController {
         typeof nucleoIdQuery === "string" ? nucleoIdQuery : undefined;
 
       if (!eventoId || !nucleoId) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "ID do evento e nucleoId são obrigatórios",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "ID do evento e nucleoId são obrigatórios",
+        });
       }
 
       const query = new GetEventoByIdQuery(userId, eventoId, nucleoId);
@@ -85,12 +83,10 @@ export class CalendarioController {
         req.body;
 
       if (!nucleoId || !titulo || !dataEvento) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "nucleoId, titulo e dataEvento são obrigatórios",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "nucleoId, titulo e dataEvento são obrigatórios",
+        });
       }
 
       const command = new CreateEventoCommand(
@@ -117,12 +113,10 @@ export class CalendarioController {
 
       const eventoId = typeof idParam === "string" ? idParam : undefined;
       if (!eventoId || !nucleoId) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "ID do evento e nucleoId são obrigatórios",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "ID do evento e nucleoId são obrigatórios",
+        });
       }
 
       const command = new UpdateEventoCommand(
@@ -149,12 +143,10 @@ export class CalendarioController {
 
       const eventoId = typeof idParam === "string" ? idParam : undefined;
       if (!eventoId || !nucleoId) {
-        return res
-          .status(400)
-          .json({
-            success: false,
-            message: "ID do evento e nucleoId são obrigatórios",
-          });
+        return res.status(400).json({
+          success: false,
+          message: "ID do evento e nucleoId são obrigatórios",
+        });
       }
 
       const command = new DeleteEventoCommand(userId, eventoId, nucleoId);

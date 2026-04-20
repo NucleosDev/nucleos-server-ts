@@ -1,21 +1,23 @@
 export interface TimerDto {
   id: string;
   nucleoId: string;
-  titulo: string | null;
-  inicio: Date | null;
-  fim: Date | null;
+  titulo: string;
+  inicio: string;
+  fim: string | null;
   duracaoSegundos: number | null;
-  createdAt: Date;
-  updatedAt: Date;
+  modo: "crescente" | "decrescente";
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StartTimerDto {
   nucleoId: string;
   titulo?: string;
+  duracaoSegundos?: number;
+  modo?: "crescente" | "decrescente";
 }
 
-export interface TimerSessionDto {
-  id: string;
+export interface StopTimerDto {
   duracaoSegundos: number;
-  emAndamento: boolean;
+  xpGanho: number;
 }

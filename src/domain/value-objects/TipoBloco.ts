@@ -5,7 +5,8 @@ export type TipoBloco =
   | "lista"
   | "calendario"
   | "calculo"
-  | "colecoes";
+  | "colecoes"
+  | "timer";
 
 export const TIPO_BLOCO_VALORES: TipoBloco[] = [
   "tarefas",
@@ -15,6 +16,7 @@ export const TIPO_BLOCO_VALORES: TipoBloco[] = [
   "calendario",
   "calculo",
   "colecoes",
+  "timer",
 ];
 
 export function isTipoBloco(valor: string): valor is TipoBloco {

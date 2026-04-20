@@ -7,7 +7,6 @@ const router = Router();
 
 router.use(authenticate);
 
-// Como o router será montado com prefixo '/timers', os caminhos aqui são relativos a esse prefixo.
 router.get("/nucleo/:nucleoId", (req, res, next) => {
   TimersController.listByNucleo(req as AuthRequest, res).catch(next);
 });
@@ -18,6 +17,14 @@ router.post("/start", (req, res, next) => {
 
 router.post("/:id/stop", (req, res, next) => {
   TimersController.stop(req as AuthRequest, res).catch(next);
+});
+
+router.delete("/:id", (req, res, next) => {
+  TimersController.delete(req as AuthRequest, res).catch(next);
+});
+
+router.put("/:id", authenticate, (req, res, next) => {
+  TimersController.update(req as AuthRequest, res).catch(next);
 });
 
 export { router };

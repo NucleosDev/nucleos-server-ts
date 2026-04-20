@@ -1,6 +1,6 @@
 export interface CreateBlocoDto {
   nucleoId: string;
-  tipo: string; // String (validado com isTipoBloco)
+  tipo: string; 
   titulo?: string;
   posicao?: number;
   configuracoes?: Record<string, any>;

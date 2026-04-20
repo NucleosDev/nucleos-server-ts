@@ -1,4 +1,3 @@
-// application/dto/colecao.dto.ts
 import { TipoCampo } from "../../domain/entities/Campo";
 
 //  COLEÇÃO

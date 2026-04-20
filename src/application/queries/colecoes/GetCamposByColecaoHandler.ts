@@ -9,7 +9,7 @@ export class GetCamposByColecaoHandler {
   constructor(private readonly colecaoRepository: IColecaoRepository) {}
 
   async execute(query: GetCamposByColecaoQuery): Promise<CampoResponseDto[]> {
-    const { colecaoId, userId } = query;
+    const { userId, colecaoId } = query; // ORDEM CORRETA: userId primeiro
 
     if (!userId) {
       throw new Error("Usuário não autenticado");
