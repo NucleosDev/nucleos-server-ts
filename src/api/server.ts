@@ -1,3 +1,4 @@
+// import dns from "dns";
 import "reflect-metadata";
 import express from "express";
 import type { Express, Request, Response, NextFunction } from "express";
@@ -22,6 +23,7 @@ import {
 import { setupRouteInterface } from "./routes/route-interface";
 import { normalizeBodyMiddleware } from "./middlewares/normalize-body.middleware";
 
+// dns.setDefaultResultOrder("ipv4first");
 console.log("SERVER FILE EXECUTED");
 
 interface CustomError extends Error {
