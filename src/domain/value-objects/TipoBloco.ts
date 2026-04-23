@@ -1,6 +1,7 @@
 export type TipoBloco =
   | "tarefas"
   | "habitos"
+  | "habito"
   | "notas"
   | "lista"
   | "calendario"
@@ -11,6 +12,7 @@ export type TipoBloco =
 export const TIPO_BLOCO_VALORES: TipoBloco[] = [
   "tarefas",
   "habitos",
+  "habito",
   "notas",
   "lista",
   "calendario",

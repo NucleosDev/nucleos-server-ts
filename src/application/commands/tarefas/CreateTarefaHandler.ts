@@ -5,6 +5,7 @@ import { CreateTarefaCommand } from "./CreateTarefaCommand";
 import { TarefaResponseDto } from "../../dto/tarefa.dto";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
+import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
 
 export class CreateTarefaHandler {
   constructor(private readonly tarefaRepository: ITarefaRepository) {}
@@ -49,6 +50,12 @@ export class CreateTarefaHandler {
     });
 
     await this.tarefaRepository.save(tarefa);
+
+    await NotificationsController.createNotification(
+      command.userId,
+      "Nova Tarefa Criada!",
+      `Você criou a tarefa "${tarefa.titulo}"`,
+    );
 
     return {
       id: tarefa.id,

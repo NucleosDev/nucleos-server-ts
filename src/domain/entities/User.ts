@@ -57,7 +57,6 @@ export class User {
     this.roles = [];
     this.conquistas = [];
 
-    // Criar nickname (com fallback seguro)
     const nickname =
       params.nickname || params.fullName.split(" ")[0] || "Usuário";
 
@@ -76,7 +75,7 @@ export class User {
     this.preference = new UserPreference({ userId: this.id });
 
     // Criar level
-    this.level = new UserLevel({ userId: this.id });
+    this.level = new UserLevel(this.id);
 
     // Adicionar role padrão
     this.roles.push(new UserRole({ userId: this.id, role: "user" }));
@@ -131,7 +130,7 @@ export class User {
 
   addXp(amount: number): { leveledUp: boolean; newLevel: number } {
     if (!this.level) {
-      this.level = new UserLevel({ userId: this.id });
+      this.level = new UserLevel(this.id);
     }
     return this.level.addXp(amount);
   }

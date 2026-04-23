@@ -1,33 +1,25 @@
+// src/api/routes/habitos.routes.ts
 import { Router } from "express";
-import { authenticate } from "../middlewares/auth.middleware";
-import { AuthRequest } from "../middlewares/auth.middleware";
+import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
 import { HabitosController } from "../controllers/v1/HabitosController";
 import { CreateHabitoHandler } from "../../application/commands/habitos/CreateHabitoHandler";
+import { UpdateHabitoHandler } from "../../application/commands/habitos/UpdateHabitoHandler";
 import { RegistrarHabitoHandler } from "../../application/commands/habitos/RegistrarHabitoHandler";
 import { DeleteHabitoHandler } from "../../application/commands/habitos/DeleteHabitoHandler";
 import { GetHabitosByBlocoHandler } from "../../application/queries/habitos/GetHabitosByBlocoHandler";
 import { HabitoRepository } from "../../infrastructure/persistence/repositories/HabitoRepository";
-import { CurrentUserService } from "../../infrastructure/services/current-user.service";
 
 const habitoRepository = new HabitoRepository();
-const currentUserService = new CurrentUserService();
 
-const createHabitoHandler = new CreateHabitoHandler(
-  habitoRepository,
-  currentUserService,
-);
-const registrarHabitoHandler = new RegistrarHabitoHandler(
-  habitoRepository,
-  currentUserService,
-);
-const deleteHabitoHandler = new DeleteHabitoHandler(
-  habitoRepository,
-  currentUserService,
-);
+const createHabitoHandler = new CreateHabitoHandler(habitoRepository);
+const updateHabitoHandler = new UpdateHabitoHandler(habitoRepository);
+const registrarHabitoHandler = new RegistrarHabitoHandler(habitoRepository);
+const deleteHabitoHandler = new DeleteHabitoHandler(habitoRepository);
 const getHabitosByBlocoHandler = new GetHabitosByBlocoHandler(habitoRepository);
 
 const habitosController = new HabitosController(
   createHabitoHandler,
+  updateHabitoHandler,
   registrarHabitoHandler,
   deleteHabitoHandler,
   getHabitosByBlocoHandler,
@@ -35,18 +27,24 @@ const habitosController = new HabitosController(
 
 export const habitosRoutes = Router();
 
-habitosRoutes.get("/bloco/:blocoId", authenticate, (req, res, next) => {
+habitosRoutes.use(authenticate);
+
+habitosRoutes.get("/bloco/:blocoId", (req, res, next) => {
   habitosController.listByBloco(req as AuthRequest, res).catch(next);
 });
 
-habitosRoutes.post("/", authenticate, (req, res, next) => {
+habitosRoutes.post("/", (req, res, next) => {
   habitosController.create(req as AuthRequest, res).catch(next);
 });
 
-habitosRoutes.post("/:id/registrar", authenticate, (req, res, next) => {
+habitosRoutes.put("/:id", (req, res, next) => {
+  habitosController.update(req as AuthRequest, res).catch(next);
+});
+
+habitosRoutes.post("/:id/registrar", (req, res, next) => {
   habitosController.registrar(req as AuthRequest, res).catch(next);
 });
 
-habitosRoutes.delete("/:id", authenticate, (req, res, next) => {
+habitosRoutes.delete("/:id", (req, res, next) => {
   habitosController.delete(req as AuthRequest, res).catch(next);
 });

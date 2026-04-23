@@ -25,7 +25,7 @@ const registerSchema = z
     phone: z.string().optional(),
     cpf: z.string().optional(),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((data: { password: string; confirmPassword: string }) => data.password === data.confirmPassword, {
     message: "Senhas não coincidem",
     path: ["confirmPassword"],
   });

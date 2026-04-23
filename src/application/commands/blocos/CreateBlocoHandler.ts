@@ -10,7 +10,7 @@ import {
 } from "../../../domain/value-objects/TipoBloco";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
-
+import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
 export class CreateBlocoHandler {
   constructor(
     private readonly blocoRepository: IBlocoRepository,
@@ -77,6 +77,12 @@ export class CreateBlocoHandler {
     await this.blocoRepository.save(bloco);
 
     console.log(" [CreateBlocoHandler] Bloco criado com sucesso:", bloco.id);
+
+    await NotificationsController.createNotification(
+      command.userId,
+      "📦 Novo Bloco Criado!",
+      `Você criou o bloco "${bloco.titulo || bloco.tipo}" e ganhou 40 XP!`,
+    );
 
     return {
       id: bloco.id,

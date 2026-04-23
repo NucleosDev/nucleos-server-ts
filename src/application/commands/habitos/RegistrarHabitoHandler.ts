@@ -1,28 +1,18 @@
-
 import { HabitoRegistro } from "../../../domain/entities/HabitoRegistro";
 import { IHabitoRepository } from "../../../domain/repositories/IHabitoRepository";
-import { ICurrentUserService } from "../../interfaces/ICurrentUserService";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { RegistrarHabitoCommand } from "./RegistrarHabitoCommand";
 import { HabitoRegistroResponseDto } from "../../dto/habito.dto";
-
+import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
+import { Habito } from "../../../domain/entities/Habito";
 export class RegistrarHabitoHandler {
-  constructor(
-    private readonly habitoRepository: IHabitoRepository,
-    private readonly currentUserService: ICurrentUserService,
-  ) {}
+  constructor(private readonly habitoRepository: IHabitoRepository) {}
 
   async execute(
     command: RegistrarHabitoCommand,
   ): Promise<HabitoRegistroResponseDto> {
-    const userId = this.currentUserService.getUserId();
-    if (!userId) {
-      throw new Error("Usuário não autenticado");
-    }
-
-    // Verificar se o hábito pertence ao usuário
     const habitoCheck = await pool.query(
-      `SELECT h.id, b.nucleo_id, n.user_id
+      `SELECT h.id, n.user_id
        FROM habitos h
        JOIN blocos b ON h.bloco_id = b.id
        JOIN nucleos n ON b.nucleo_id = n.id
@@ -34,11 +24,10 @@ export class RegistrarHabitoHandler {
       throw new Error("Hábito não encontrado");
     }
 
-    if (habitoCheck.rows[0].user_id !== userId) {
+    if (habitoCheck.rows[0].user_id !== command.userId) {
       throw new Error("Acesso negado");
     }
 
-    // Verificar se já existe registro para hoje
     const dataInicio = new Date(command.data);
     dataInicio.setHours(0, 0, 0, 0);
 
@@ -51,12 +40,10 @@ export class RegistrarHabitoHandler {
     let registro: HabitoRegistro;
 
     if (registroExistente) {
-      // Atualizar registro existente
       registro = registroExistente;
       registro.incrementar(command.vezesCompletadas || 1);
       await this.habitoRepository.saveRegistro(registro);
     } else {
-      // Criar novo registro
       registro = HabitoRegistro.create({
         habitoId: command.habitoId,
         data: dataInicio,
@@ -64,6 +51,12 @@ export class RegistrarHabitoHandler {
       });
       await this.habitoRepository.saveRegistro(registro);
     }
+
+    await NotificationsController.createNotification(
+      command.userId,
+      "🔄 Hábito Registrado!",
+      `Você registrou "${Habito.name}" e ganhou 30 XP!`,
+    );
 
     return {
       id: registro.id,

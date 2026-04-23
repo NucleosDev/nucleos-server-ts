@@ -7,20 +7,25 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get("/notifications", (req, res, next) => {
+// IMPORTANTE: NÃO colocar "/notifications" aqui porque já tem no index.ts
+router.get("/", (req, res, next) => {
   NotificationsController.list(req as AuthRequest, res).catch(next);
 });
 
-router.patch("/notifications/:id/read", (req, res, next) => {
+router.get("/unread-count", (req, res, next) => {
+  NotificationsController.getUnreadCount(req as AuthRequest, res).catch(next);
+});
+
+router.patch("/:id/read", (req, res, next) => {
   NotificationsController.markAsRead(req as AuthRequest, res).catch(next);
 });
 
-router.patch("/notifications/read-all", (req, res, next) => {
+router.patch("/read-all", (req, res, next) => {
   NotificationsController.markAllAsRead(req as AuthRequest, res).catch(next);
 });
 
-router.delete("/notifications/:id", (req, res, next) => {
+router.delete("/:id", (req, res, next) => {
   NotificationsController.delete(req as AuthRequest, res).catch(next);
 });
 
-export { router };
+export const notificationsRoutes = router;
