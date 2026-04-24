@@ -4,7 +4,8 @@ import { pool } from "../../../infrastructure/persistence/db/connection";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 import { StopTimerCommand } from "./stop-timer.command";
-
+import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
+import { Timer } from "../../../domain/entities/Timer";
 export class StopTimerHandler {
   private timerRepository: TimerRepository;
 
@@ -26,8 +27,8 @@ export class StopTimerHandler {
 
       const nucleoCheck = await client.query(
         `SELECT n.user_id FROM timers t
-         JOIN nucleos n ON n.id = t.nucleo_id
-         WHERE t.id = $1`,
+       JOIN nucleos n ON n.id = t.nucleo_id
+       WHERE t.id = $1`,
         [command.id],
       );
 
@@ -49,10 +50,16 @@ export class StopTimerHandler {
       if (xpAmount > 0) {
         await client.query(
           `INSERT INTO xp_logs (user_id, nucleo_id, xp_amount, source, created_at)
-           VALUES ($1, $2, $3, 'timer', NOW())`,
+         VALUES ($1, $2, $3, 'timer', NOW())`,
           [command.userId, timer.nucleoId, xpAmount],
         );
       }
+
+      await NotificationsController.createNotification(
+        command.userId,
+        "Timer Completado!",
+        `Você completou um timer de ${Math.floor((timer.duracaoSegundos || 0) / 60)} minutos e ganhou ${xpAmount} XP!`,
+      );
 
       await client.query("COMMIT");
 

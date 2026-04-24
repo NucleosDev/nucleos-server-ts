@@ -4,7 +4,7 @@ import { NucleoResponseDto } from "../../dto/nucleo.dto";
 import { Nucleo } from "../../../domain/entities/Nucleo";
 import { NucleoIconRepository } from "../../../infrastructure/persistence/repositories/NucleoIconRepository";
 import { isValidUuid } from "../../../shared/utils/uuid";
-
+import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
 export class CreateNucleoHandler {
   constructor(
     private readonly nucleoRepository: INucleoRepository,
@@ -44,6 +44,11 @@ export class CreateNucleoHandler {
     });
 
     await this.nucleoRepository.save(nucleo);
+    await NotificationsController.createNotification(
+      command.userId,
+      "Novo Núcleo Criado!",
+      `Você criou o núcleo "${nucleo.nome}" e ganhou 100 XP!`,
+    );
 
     // Retorna o nome do ícone (não o UUID) para manter compatibilidade com o frontend
     let iconName: string | null = null;

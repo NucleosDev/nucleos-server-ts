@@ -4,7 +4,7 @@ import { TarefaResponseDto } from "../../dto/tarefa.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
-
+import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
 export class ConcluirTarefaHandler {
   constructor(private readonly tarefaRepository: ITarefaRepository) {}
 
@@ -37,7 +37,11 @@ export class ConcluirTarefaHandler {
 
     tarefa.concluir();
     await this.tarefaRepository.update(tarefa);
-
+    await NotificationsController.createNotification(
+      command.userId,
+      "Tarefa Concluída!",
+      `Você completou "${tarefa.titulo}" e ganhou 50 XP!`,
+    );
     return {
       id: tarefa.id,
       blocoId: tarefa.blocoId,

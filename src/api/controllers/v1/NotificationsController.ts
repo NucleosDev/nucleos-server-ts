@@ -1,3 +1,4 @@
+// src/api/controllers/v1/NotificationsController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { pool } from "../../../infrastructure/persistence/db/connection";
@@ -39,6 +40,7 @@ export class NotificationsController {
       }));
 
       res.json({
+        success: true,
         data: notifications,
         pagination: {
           total: parseInt(countResult.rows[0].count),
@@ -93,6 +95,30 @@ export class NotificationsController {
       });
     } catch (error) {
       logger.error("Erro ao marcar todas notificações:", error);
+      res.status(500).json({ success: false, message: "Erro interno" });
+    }
+  }
+
+  // 🔥 MÉTODO FALTANDO - ADICIONAR ESTE
+  static async getUnreadCount(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
+
+      const result = await pool.query(
+        `SELECT COUNT(*) as count FROM notifications WHERE user_id = $1 AND read = false`,
+        [userId],
+      );
+
+      res.json({
+        success: true,
+        data: { count: parseInt(result.rows[0].count) },
+      });
+    } catch (error) {
+      logger.error("Erro ao buscar contagem de não lidas:", error);
       res.status(500).json({ success: false, message: "Erro interno" });
     }
   }

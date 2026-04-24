@@ -1,4 +1,3 @@
-// import dns from "dns";
 import "reflect-metadata";
 import express from "express";
 import type { Express, Request, Response, NextFunction } from "express";
@@ -22,6 +21,15 @@ import {
 } from "../infrastructure/persistence/db/connection";
 import { setupRouteInterface } from "./routes/route-interface";
 import { normalizeBodyMiddleware } from "./middlewares/normalize-body.middleware";
+import { initSocket, getIo } from "../api/socket";
+import { HealthController } from "./controllers/HealthController";
+import {
+  initRedis,
+  closeRedis,
+  isRedisAvailable,
+} from "../infrastructure/cache/redis.service";
+
+const healthController = new HealthController();
 
 // dns.setDefaultResultOrder("ipv4first");
 console.log("SERVER FILE EXECUTED");
@@ -37,7 +45,7 @@ app.set("trust proxy", 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(normalizeBodyMiddleware); // <-- Converte PascalCase para camelCase
+app.use(normalizeBodyMiddleware);
 
 // CONFIG
 const PORT = env.PORT;
@@ -69,13 +77,12 @@ app.use((req, res, next) => {
 });
 
 //
-// c CORS CORRIGIDO - VERSÃO MELHORADA
+// CORS CORRIGIDO - VERSÃO MELHORADA
 //
 // Função para verificar origem permitida
 const isOriginAllowed = (origin: string | undefined): boolean => {
-  if (!origin) return true; // Permite requisições sem origin (curl, mobile, etc)
+  if (!origin) return true;
 
-  // Em desenvolvimento, permite qualquer localhost
   if (NODE_ENV === "development") {
     if (origin.includes("localhost") || origin.includes("127.0.0.1")) {
       logger.info(`CORS permitido para ${origin} (modo desenvolvimento)`);
@@ -83,7 +90,6 @@ const isOriginAllowed = (origin: string | undefined): boolean => {
     }
   }
 
-  // Verifica se está na lista de permitidas
   const isAllowed = CORS_ORIGINS.includes(origin);
   if (isAllowed) {
     logger.info(`CORS permitido para: ${origin}`);
@@ -151,8 +157,8 @@ app.use(
 //
 app.use(
   helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" }, // Permite recursos cross-origin
-    crossOriginOpenerPolicy: { policy: "unsafe-none" }, // Para desenvolvimento
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "unsafe-none" },
   }),
 );
 
@@ -177,7 +183,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 const limiter = rateLimit({
   windowMs: Number(env.RATE_LIMIT_WINDOW_MS) || 900000,
   max: Number(env.RATE_LIMIT_MAX_REQUESTS) || 100000,
-  skip: (req) => req.method === "OPTIONS", // Skip preflight requests
+  skip: (req) => req.method === "OPTIONS",
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -188,7 +194,7 @@ const limiter = rateLimit({
 app.use("/api", limiter);
 
 //
-//  BODY PARSERS
+// BODY PARSERS
 //
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -217,7 +223,7 @@ app.use(
 );
 
 //
-// HEALTH CHECK
+// HEALTH CHECK JSON
 //
 app.get("/health", async (req, res) => {
   const dbHealthy = await testDatabaseConnection();
@@ -232,6 +238,12 @@ app.get("/health", async (req, res) => {
   });
 });
 
+// HEALTH CHECK HTML
+
+app.get("/health/dashboard", (req, res) => {
+  res.setHeader("Content-Type", "text/html");
+  res.send(healthController.getHealthHTML());
+});
 // ROOT endpoint
 app.get("/", (req, res) => {
   res.json({
@@ -253,7 +265,7 @@ app.get("/", (req, res) => {
 setupRouteInterface(app, BASE_PATH);
 
 //
-//  API ROUTES
+// API ROUTES
 //
 app.use(BASE_PATH, router);
 
@@ -275,7 +287,7 @@ app.use("*", (req, res) => {
 });
 
 //
-//  ERROR HANDLER GLOBAL
+// ERROR HANDLER GLOBAL
 //
 app.use(
   (
@@ -304,45 +316,35 @@ app.use(
 );
 
 //
-//  SOCKET.IO SETUP
+// CRIAR SERVIDOR HTTP
 //
 const httpServer = http.createServer(app);
 
-const io = new SocketServer(httpServer, {
-  cors: {
-    origin: (origin, callback) => {
-      if (!origin || isOriginAllowed(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`Origin ${origin} not allowed by CORS`));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST"],
-  },
-  transports: ["websocket", "polling"],
-});
+//
+// SOCKET.IO SETUP - USANDO O initSocket
+//
+const io = initSocket(httpServer);
 
+// Configurar autenticação e handlers
 io.use(authenticateSocket);
 
 io.on("connection", (socket: Socket) => {
   logger.info(`Socket conectado: ${socket.id}`);
   setupSocketHandlers(io, socket);
   socket.on("disconnect", () => {
-    logger.info(` Socket desconectado: ${socket.id}`);
+    logger.info(`Socket desconectado: ${socket.id}`);
   });
 });
 
 app.set("io", io);
 
 //
-//  START SERVER
+// START SERVER
 //
 let server: http.Server;
 
 const startServer = async (port: number): Promise<void> => {
   try {
-    // Test database connection
     const dbHealthy = await testDatabaseConnection();
     if (!dbHealthy) {
       logger.error("Database connection failed - check your credentials");
@@ -350,10 +352,17 @@ const startServer = async (port: number): Promise<void> => {
     }
     logger.info("Database connected successfully");
 
+    await initRedis();
+    if (isRedisAvailable()) {
+      logger.info("Redis conectado e disponível");
+    } else {
+      logger.info("Redis não disponível, usando cache em memória");
+    }
+
     server = httpServer.listen(port, () => {
-      logger.info(` Server rodando em http://localhost:${port}`);
+      logger.info(`Server rodando em http://localhost:${port}`);
       logger.info(`API disponível em http://localhost:${port}${BASE_PATH}`);
-      logger.info(` CORS permitido para: ${CORS_ORIGINS.join(", ")}`);
+      logger.info(`CORS permitido para: ${CORS_ORIGINS.join(", ")}`);
       logger.info(`🔧 Ambiente: ${NODE_ENV}`);
       logger.info(`Health check: http://localhost:${port}/health`);
     });
@@ -386,15 +395,13 @@ const shutdown = async (signal: string) => {
   }, 10000);
 
   try {
-    // Fecha conexões Socket.IO
+    await closeRedis();
     await io.close();
     logger.info("Socket.IO fechado");
 
-    // Fecha conexões do banco
     await pool.end();
     logger.info("Pool do banco fechado");
 
-    // Fecha servidor HTTP
     if (server) {
       server.close(() => {
         logger.info("Servidor encerrado com sucesso");
@@ -423,7 +430,7 @@ process.on("uncaughtException", (err) => {
 });
 
 process.on("unhandledRejection", (reason: any) => {
-  logger.error(" Unhandled Rejection:", reason);
+  logger.error("Unhandled Rejection:", reason);
   process.exit(1);
 });
 

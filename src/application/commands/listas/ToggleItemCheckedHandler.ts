@@ -3,7 +3,8 @@ import { ToggleItemCheckedCommand } from "./ToggleItemCheckedCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
-
+import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
+import { ItemLista } from "../../../domain/entities/ItemLista";
 export class ToggleItemCheckedHandler {
   constructor(private readonly listaRepository: IListaRepository) {}
 
@@ -38,6 +39,14 @@ export class ToggleItemCheckedHandler {
     const result = await pool.query(`SELECT * FROM itens_lista WHERE id = $1`, [
       id,
     ]);
+
+    if (command.checked) {
+      await NotificationsController.createNotification(
+        command.userId,
+        "Item Concluído!",
+        `Você completou "${ItemLista.name}" e ganhou 10 XP!`,
+      );
+    }
 
     return {
       id: result.rows[0].id,

@@ -1,111 +1,46 @@
-// infrastructure/persistence/repositories/StreakRepository.ts
-import { BaseRepository } from "./BaseRepository";
-import { IStreakRepository } from "../../../domain/repositories/IStreakRepository";
+import { pool } from "../db/connection";
 import { Streak } from "../../../domain/entities/Streak";
 
-export class StreakRepository
-  extends BaseRepository<Streak>
-  implements IStreakRepository
-{
-  protected getTableName(): string {
-    return "streaks";
-  }
-
-  protected mapToEntity(row: any): Streak {
-    return Streak.fromDatabase(row);
-  }
-
-  protected mapToDatabase(entity: Streak): any[] {
-    // 🔥 Remove deletedAt (entidade não tem essa propriedade)
-    return [
-      entity.id,
-      entity.userId,
-      entity.nucleoId,
-      entity.streakType,
-      entity.currentStreak,
-      entity.maxStreak,
-      entity.lastActivityDate,
-      entity.createdAt,
-      entity.updatedAt,
-    ];
-  }
-
-  // ========== MÉTODOS ESPECÍFICOS ==========
-
-  async findByUserId(userId: string): Promise<Streak[]> {
-    const result = await this.query(
-      `SELECT * FROM streaks WHERE user_id = $1`,
+export class StreakRepository {
+  async findByUserId(userId: string): Promise<Streak | null> {
+    const result = await pool.query(
+      "SELECT * FROM streaks WHERE user_id = $1 AND nucleo_id IS NULL ORDER BY created_at DESC LIMIT 1",
       [userId],
     );
-    return result.rows.map((row) => this.mapToEntity(row));
+    if (result.rows.length === 0) return null;
+    return Streak.fromDatabase(result.rows[0]);
   }
 
-  async findByUserAndType(
-    userId: string,
-    streakType: string,
-    nucleoId?: string,
-  ): Promise<Streak | null> {
-    let sql = `SELECT * FROM streaks WHERE user_id = $1 AND streak_type = $2`;
-    const params: any[] = [userId, streakType];
-    if (nucleoId) {
-      sql += ` AND nucleo_id = $3`;
-      params.push(nucleoId);
-    } else {
-      sql += ` AND nucleo_id IS NULL`;
-    }
-    const result = await this.query(sql, params);
-    return result.rows[0] ? this.mapToEntity(result.rows[0]) : null;
+  async save(entity: Streak): Promise<void> {
+    const data = entity.toDatabase();
+    await pool.query(
+      `INSERT INTO streaks (id, user_id, nucleo_id, streak_type, current_streak, max_streak, last_activity_date, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       ON CONFLICT (id) DO UPDATE SET
+         current_streak = EXCLUDED.current_streak,
+         max_streak = EXCLUDED.max_streak,
+         last_activity_date = EXCLUDED.last_activity_date,
+         updated_at = EXCLUDED.updated_at`,
+      [
+        data.id,
+        data.user_id,
+        data.nucleo_id,
+        data.streak_type,
+        data.current_streak,
+        data.max_streak,
+        data.last_activity_date,
+        data.created_at,
+        data.updated_at,
+      ],
+    );
   }
 
-  override async create(streak: Streak): Promise<Streak> {
-    const values = this.mapToDatabase(streak);
-    const columns = [
-      "id",
-      "user_id",
-      "nucleo_id",
-      "streak_type",
-      "current_streak",
-      "max_streak",
-      "last_activity_date",
-      "created_at",
-      "updated_at",
-    ];
-    const placeholders = values.map((_, i) => `$${i + 1}`).join(", ");
-    const sql = `INSERT INTO streaks (${columns.join(", ")}) VALUES (${placeholders}) RETURNING *`;
-    const result = await this.query(sql, values);
-    return this.mapToEntity(result.rows[0]);
-  }
+  async updateStreak(userId: string): Promise<Streak> {
+    let entity = await this.findByUserId(userId);
+    if (!entity) entity = new Streak(userId);
 
-  async save(streak: Streak): Promise<Streak> {
-    const values = [
-      streak.currentStreak,
-      streak.maxStreak,
-      streak.lastActivityDate,
-      streak.id,
-    ];
-    const sql = `
-      UPDATE streaks
-      SET current_streak = $1, max_streak = $2, last_activity_date = $3, updated_at = NOW()
-      WHERE id = $4
-      RETURNING *
-    `;
-    const result = await this.query(sql, values);
-    return this.mapToEntity(result.rows[0]);
-  }
-
-  // ========== MÉTODOS OBRIGATÓRIOS DA BASE (com override) ==========
-
-  override async findById(
-    id: string,
-    additionalConditions: string = "",
-  ): Promise<Streak | null> {
-    const sql = `SELECT * FROM streaks WHERE id = $1 ${additionalConditions}`;
-    const result = await this.query(sql, [id]);
-    return result.rows[0] ? this.mapToEntity(result.rows[0]) : null;
-  }
-
-  override async softDelete(id: string): Promise<boolean> {
-    // streaks não tem soft delete, então faz hard delete ou lança erro
-    return this.hardDelete(id);
+    entity.update();
+    await this.save(entity);
+    return entity;
   }
 }

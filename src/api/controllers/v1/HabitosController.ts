@@ -1,7 +1,10 @@
+// api/controllers/v1/HabitosController.ts
 import { Response } from "express";
 import { AuthRequest } from "../../middlewares/auth.middleware";
 import { CreateHabitoHandler } from "../../../application/commands/habitos/CreateHabitoHandler";
 import { CreateHabitoCommand } from "../../../application/commands/habitos/CreateHabitoCommand";
+import { UpdateHabitoHandler } from "../../../application/commands/habitos/UpdateHabitoHandler";
+import { UpdateHabitoCommand } from "../../../application/commands/habitos/UpdateHabitoCommand";
 import { RegistrarHabitoHandler } from "../../../application/commands/habitos/RegistrarHabitoHandler";
 import { RegistrarHabitoCommand } from "../../../application/commands/habitos/RegistrarHabitoCommand";
 import { DeleteHabitoHandler } from "../../../application/commands/habitos/DeleteHabitoHandler";
@@ -12,6 +15,7 @@ import { GetHabitosByBlocoQuery } from "../../../application/queries/habitos/Get
 export class HabitosController {
   constructor(
     private readonly createHabitoHandler: CreateHabitoHandler,
+    private readonly updateHabitoHandler: UpdateHabitoHandler,
     private readonly registrarHabitoHandler: RegistrarHabitoHandler,
     private readonly deleteHabitoHandler: DeleteHabitoHandler,
     private readonly getHabitosByBlocoHandler: GetHabitosByBlocoHandler,
@@ -19,16 +23,22 @@ export class HabitosController {
 
   async listByBloco(req: AuthRequest, res: Response): Promise<Response> {
     try {
+      const userId = req.user?.id;
       const { blocoId } = req.params;
 
-      if (!blocoId || typeof blocoId !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: "ID do bloco inválido",
-        });
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
       }
 
-      const query = new GetHabitosByBlocoQuery(blocoId);
+      if (!blocoId || typeof blocoId !== "string") {
+        return res
+          .status(400)
+          .json({ success: false, message: "ID do bloco inválido" });
+      }
+
+      const query = new GetHabitosByBlocoQuery(blocoId, userId);
       const result = await this.getHabitosByBlocoHandler.execute(query);
       return res.json({ success: true, data: result });
     } catch (error: any) {
@@ -38,7 +48,14 @@ export class HabitosController {
 
   async create(req: AuthRequest, res: Response): Promise<Response> {
     try {
+      const userId = req.user?.id;
       const { blocoId, nome, frequencia, diasSemana, metaVezes } = req.body;
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
 
       if (!blocoId || typeof blocoId !== "string") {
         return res
@@ -53,6 +70,7 @@ export class HabitosController {
       }
 
       const command = new CreateHabitoCommand(
+        userId,
         blocoId,
         nome,
         frequencia,
@@ -66,10 +84,50 @@ export class HabitosController {
     }
   }
 
+  async update(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      const { nome, frequencia, diasSemana, metaVezes } = req.body;
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
+
+      if (!id || typeof id !== "string") {
+        return res
+          .status(400)
+          .json({ success: false, message: "ID do hábito inválido" });
+      }
+
+      const command = new UpdateHabitoCommand(
+        id,
+        userId,
+        nome,
+        frequencia,
+        diasSemana,
+        metaVezes,
+      );
+      const result = await this.updateHabitoHandler.execute(command);
+      return res.json({ success: true, data: result });
+    } catch (error: any) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
   async registrar(req: AuthRequest, res: Response): Promise<Response> {
     try {
+      const userId = req.user?.id;
       const { id } = req.params;
       const { data, vezesCompletadas } = req.body;
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
 
       if (!id || typeof id !== "string") {
         return res
@@ -80,6 +138,7 @@ export class HabitosController {
       const dataRegistro = data ? new Date(data) : new Date();
       const command = new RegistrarHabitoCommand(
         id,
+        userId,
         dataRegistro,
         vezesCompletadas,
       );
@@ -92,7 +151,14 @@ export class HabitosController {
 
   async delete(req: AuthRequest, res: Response): Promise<Response> {
     try {
+      const userId = req.user?.id;
       const { id } = req.params;
+
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
 
       if (!id || typeof id !== "string") {
         return res
@@ -100,7 +166,7 @@ export class HabitosController {
           .json({ success: false, message: "ID do hábito inválido" });
       }
 
-      const command = new DeleteHabitoCommand(id);
+      const command = new DeleteHabitoCommand(id, userId);
       await this.deleteHabitoHandler.execute(command);
       return res.status(204).send();
     } catch (error: any) {

@@ -1,81 +1,191 @@
-import { Request, Response } from "express";
-import { logger } from "../../../shared/utils/logger";
-import { pool } from "../../../infrastructure/persistence/db/connection";
+// src/api/controllers/v1/GamificacaoController.ts
+import { Response } from "express";
+import { AuthRequest } from "../../middlewares/auth.middleware";
+import { GamificationService } from "../../../infrastructure/services/GamificationService";
+import { ConquistaRepository } from "../../../infrastructure/persistence/repositories/ConquistaRepository";
+import { UserLevelRepository } from "../../../infrastructure/persistence/repositories/UserLevelRepository";
+import { StreakRepository } from "../../../infrastructure/persistence/repositories/StreakRepository";
+import { XpLogRepository } from "../../../infrastructure/persistence/repositories/XpLogRepository";
 
 export class GamificacaoController {
-  static async getLevel(req: Request, res: Response): Promise<void> {
+  private gamificationService: GamificationService;
+  private conquistaRepo: ConquistaRepository;
+  private userLevelRepo: UserLevelRepository;
+  private streakRepo: StreakRepository;
+  private xpLogRepo: XpLogRepository;
+
+  constructor() {
+    this.gamificationService = new GamificationService();
+    this.conquistaRepo = new ConquistaRepository();
+    this.userLevelRepo = new UserLevelRepository();
+    this.streakRepo = new StreakRepository();
+    this.xpLogRepo = new XpLogRepository();
+  }
+
+  // GET /gamification/stats
+  async getUserStats(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const userId = (req as any).user?.id;
-      const row = await pool.query(
-        `SELECT * FROM user_levels WHERE user_id=$1`,
-        [userId],
-      );
-      if (!row.rows.length) {
-        res
-          .status(404)
-          .json({ success: false, message: "Level não encontrado" });
-        return;
+      const userId = req.user?.id;
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
       }
-      const r = row.rows[0];
-      res.json({
-        userId: r.user_id,
-        level: r.level,
-        currentXp: r.current_xp,
-        nextLevelXp: r.next_level_xp,
-        totalXpEarned: r.total_xp_earned,
+
+      const level = await this.userLevelRepo.findByUserId(userId);
+      const streak = await this.streakRepo.findByUserId(userId);
+      const achievements = await this.conquistaRepo.findUnlockedByUser(userId);
+      const todayXp = await this.xpLogRepo.getTodayXp(userId);
+      const userStats = await this.xpLogRepo.getUserStats(userId);
+
+      const stats = {
+        level: level?.level || 1,
+        currentXp: level?.currentXp || 0,
+        nextLevelXp: level?.nextLevelXp || 100,
+        totalXp: level?.totalXpEarned || 0,
+        currentStreak: streak?.currentStreak || 0,
+        maxStreak: streak?.maxStreak || 0,
+        achievementsCount: achievements.length,
+        todayXp: todayXp,
+        totalActions: userStats.totalActions || 0,
+        progressToNextLevel:
+          ((level?.currentXp || 0) / (level?.nextLevelXp || 100)) * 100,
+      };
+
+      return res.json({ success: true, data: stats });
+    } catch (error: any) {
+      console.error("[GamificacaoController] getUserStats error:", error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // GET /gamification/leaderboard
+  async getLeaderboard(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const leaderboard = await this.userLevelRepo.getLeaderboard(limit);
+      return res.json({ success: true, data: leaderboard });
+    } catch (error: any) {
+      console.error("[GamificacaoController] getLeaderboard error:", error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // GET /gamification/achievements
+  async getAchievements(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
+
+      const unlocked = await this.conquistaRepo.findUnlockedByUser(userId);
+      const all = await this.conquistaRepo.findAll();
+
+      const unlockedIds = new Set(unlocked.map((u) => u.id));
+      const achievements = all.map((ach) => ({
+        id: ach.id,
+        nome: ach.nome,
+        descricao: ach.descricao,
+        tipo: ach.tipo,
+        xp_recompensa: ach.xp_recompensa,
+        unlocked: unlockedIds.has(ach.id),
+        unlockedAt:
+          unlocked.find((u) => u.id === ach.id)?.desbloqueado_em || null,
+      }));
+
+      return res.json({ success: true, data: achievements });
+    } catch (error: any) {
+      console.error("[GamificacaoController] getAchievements error:", error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // GET /gamification/history
+  async getXpHistory(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
+
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const result = await this.xpLogRepo.query(
+        `SELECT id, xp_amount, source, nucleo_id, created_at 
+         FROM xp_logs 
+         WHERE user_id = $1 
+         ORDER BY created_at DESC 
+         LIMIT $2 OFFSET $3`,
+        [userId, limit, offset],
+      );
+
+      return res.json({ success: true, data: result.rows });
+    } catch (error: any) {
+      console.error("[GamificacaoController] getXpHistory error:", error);
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // GET /gamification/streak
+  async getStreak(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
+
+      const streak = await this.streakRepo.findByUserId(userId);
+
+      return res.json({
+        success: true,
+        data: {
+          currentStreak: streak?.currentStreak || 0,
+          maxStreak: streak?.maxStreak || 0,
+          lastActivityDate: streak?.lastActivityDate || null,
+        },
       });
-    } catch (e) {
-      logger.error("Erro ao buscar level:", e);
-      res.status(500).json({ success: false, message: "Erro interno" });
+    } catch (error: any) {
+      console.error("[GamificacaoController] getStreak error:", error);
+      return res.status(500).json({ success: false, message: error.message });
     }
   }
 
-  static async getStreaks(req: Request, res: Response): Promise<void> {
+  // POST /gamification/process-action (para testes/webhook)
+  async processAction(req: AuthRequest, res: Response): Promise<Response> {
     try {
-      const userId = (req as any).user?.id;
-      const rows = await pool.query(
-        `SELECT * FROM streaks WHERE user_id=$1 ORDER BY current_streak DESC`,
-        [userId],
-      );
-      res.json(
-        rows.rows.map((r) => ({
-          id: r.id,
-          streakType: r.streak_type,
-          nucleoId: r.nucleo_id,
-          currentStreak: r.current_streak,
-          maxStreak: r.max_streak,
-          lastActivityDate: r.last_activity_date,
-        })),
-      );
-    } catch (e) {
-      logger.error("Erro ao buscar streaks:", e);
-      res.status(500).json({ success: false, message: "Erro interno" });
-    }
-  }
+      const userId = req.user?.id;
+      if (!userId) {
+        return res
+          .status(401)
+          .json({ success: false, message: "Não autenticado" });
+      }
 
-  static async getConquistas(req: Request, res: Response): Promise<void> {
-    try {
-      const userId = (req as any).user?.id;
-      const rows = await pool.query(
-        `SELECT c.*, uc.desbloqueado_em FROM conquistas c
-         INNER JOIN user_conquistas uc ON uc.conquista_id = c.id
-         WHERE uc.user_id=$1 ORDER BY uc.desbloqueado_em DESC`,
-        [userId],
-      );
-      res.json(
-        rows.rows.map((r) => ({
-          id: r.id,
-          nome: r.nome,
-          descricao: r.descricao,
-          iconeUrl: r.icone_url,
-          tipo: r.tipo,
-          xpRecompensa: r.xp_recompensa,
-          desbloqueadoEm: r.desbloqueado_em,
-        })),
-      );
-    } catch (e) {
-      logger.error("Erro ao buscar conquistas:", e);
-      res.status(500).json({ success: false, message: "Erro interno" });
+      const { action, nucleoId, metadata } = req.body;
+      if (!action) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Action é obrigatório" });
+      }
+
+      const result = await this.gamificationService.processAction({
+        userId,
+        action,
+        nucleoId,
+        metadata,
+      });
+
+      return res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("[GamificacaoController] processAction error:", error);
+      return res.status(500).json({ success: false, message: error.message });
     }
   }
 }

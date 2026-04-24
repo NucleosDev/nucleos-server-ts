@@ -1,179 +1,167 @@
 // src/api/controllers/v1/ProgressController.ts
-import { Request, Response } from "express";
+import { Response } from "express";
+import { AuthRequest } from "../../middlewares/auth.middleware";
+import { GamificationService } from "../../../infrastructure/services/GamificationService";
 import { logger } from "../../../shared/utils/logger";
-import { pool } from "../../../infrastructure/persistence/db/connection";
 
 export class ProgressController {
-  static async getDashboard(req: Request, res: Response): Promise<void> {
-    try {
-      const userId = (req as any).user?.id;
-      const [level, streaks, tarefas, habitos, nucleos] = await Promise.all([
-        pool.query(`SELECT * FROM user_levels WHERE user_id=$1`, [userId]),
-        pool.query(
-          `SELECT * FROM streaks WHERE user_id=$1 ORDER BY current_streak DESC`,
-          [userId],
-        ),
-        pool.query(
-          `SELECT COUNT(*) AS total,
-           COUNT(*) FILTER (WHERE status='concluida') AS concluidas,
-           COUNT(*) FILTER (WHERE status='pendente') AS pendentes,
-           COUNT(*) FILTER (WHERE status='atrasada') AS atrasadas
-           FROM tarefas t JOIN blocos b ON b.id=t.bloco_id JOIN nucleos n ON n.id=b.nucleo_id
-           WHERE n.user_id=$1 AND t.deleted_at IS NULL`,
-          [userId],
-        ),
-        pool.query(
-          `SELECT COUNT(*) AS total_habitos,
-           COUNT(DISTINCT hr.habito_id) FILTER (WHERE hr.data >= CURRENT_DATE - 7) AS ativos_7d
-           FROM habitos h JOIN blocos b ON b.id=h.bloco_id JOIN nucleos n ON n.id=b.nucleo_id
-           LEFT JOIN habitos_registros hr ON hr.habito_id=h.id
-           WHERE n.user_id=$1 AND h.deleted_at IS NULL`,
-          [userId],
-        ),
-        pool.query(
-          `SELECT COUNT(*) AS total FROM nucleos WHERE user_id=$1 AND deleted_at IS NULL`,
-          [userId],
-        ),
-      ]);
+  private static gamificationService = new GamificationService();
 
-      const l = level.rows[0];
-      res.json({
-        level: l
-          ? {
-              level: l.level,
-              currentXp: l.current_xp,
-              nextLevelXp: l.next_level_xp,
-              totalXpEarned: l.total_xp_earned,
-            }
-          : null,
-        streaks: streaks.rows.map((s) => ({
-          type: s.streak_type,
-          nucleoId: s.nucleo_id,
-          current: s.current_streak,
-          max: s.max_streak,
-          lastActivity: s.last_activity_date,
-        })),
-        tarefas: {
-          total: parseInt(tarefas.rows[0].total),
-          concluidas: parseInt(tarefas.rows[0].concluidas),
-          pendentes: parseInt(tarefas.rows[0].pendentes),
-          atrasadas: parseInt(tarefas.rows[0].atrasadas),
-          taxaConclusao:
-            tarefas.rows[0].total > 0
-              ? Math.round(
-                  (parseInt(tarefas.rows[0].concluidas) /
-                    parseInt(tarefas.rows[0].total)) *
-                    100,
-                )
-              : 0,
-        },
-        habitos: {
-          total: parseInt(habitos.rows[0].total_habitos),
-          ativos7d: parseInt(habitos.rows[0].ativos_7d),
-        },
-        nucleos: { total: parseInt(nucleos.rows[0].total) },
-      });
-    } catch (e) {
-      logger.error("Erro dashboard:", e);
-      res.status(500).json({ success: false, message: "Erro interno" });
-    }
-  }
-
-  static async getNucleoProgress(req: Request, res: Response): Promise<void> {
+  // GET /progress/xp - Buscar XP do usuário
+  static async getXp(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { nucleoId } = req.params;
-      const [tarefas, habitos, timers, streaks] = await Promise.all([
-        pool.query(
-          `SELECT COUNT(*) AS total,
-           COUNT(*) FILTER (WHERE status='concluida') AS concluidas
-           FROM tarefas t JOIN blocos b ON b.id=t.bloco_id
-           WHERE b.nucleo_id=$1 AND t.deleted_at IS NULL`,
-          [nucleoId],
-        ),
-        pool.query(
-          `SELECT COUNT(*) AS total,
-           (SELECT COUNT(DISTINCT hr.habito_id)
-            FROM habitos_registros hr
-            JOIN habitos h ON h.id=hr.habito_id
-            JOIN blocos b2 ON b2.id=h.bloco_id
-            WHERE b2.nucleo_id=$1 AND hr.data=CURRENT_DATE) AS completados_hoje
-           FROM habitos h JOIN blocos b ON b.id=h.bloco_id
-           WHERE b.nucleo_id=$1 AND h.deleted_at IS NULL`,
-          [nucleoId],
-        ),
-        pool.query(
-          `SELECT SUM(duracao_segundos) AS total_segundos, COUNT(*) AS sessoes
-           FROM timers WHERE nucleo_id=$1 AND duracao_segundos IS NOT NULL`,
-          [nucleoId],
-        ),
-        pool.query(
-          `SELECT current_streak, max_streak FROM streaks WHERE nucleo_id=$1`,
-          [nucleoId],
-        ),
-      ]);
-      res.json({
-        tarefas: {
-          total: parseInt(tarefas.rows[0].total),
-          concluidas: parseInt(tarefas.rows[0].concluidas),
-          taxaConclusao:
-            tarefas.rows[0].total > 0
-              ? Math.round(
-                  (parseInt(tarefas.rows[0].concluidas) /
-                    parseInt(tarefas.rows[0].total)) *
-                    100,
-                )
-              : 0,
-        },
-        habitos: {
-          total: parseInt(habitos.rows[0].total),
-          completadosHoje: parseInt(habitos.rows[0].completados_hoje),
-        },
-        tempo: {
-          totalSegundos: parseInt(timers.rows[0].total_segundos) || 0,
-          sessoes: parseInt(timers.rows[0].sessoes) || 0,
-          totalHoras: parseFloat(
-            ((parseInt(timers.rows[0].total_segundos) || 0) / 3600).toFixed(2),
-          ),
-        },
-        streak: streaks.rows[0]
-          ? {
-              atual: streaks.rows[0].current_streak,
-              maximo: streaks.rows[0].max_streak,
-            }
-          : null,
-      });
-    } catch (e) {
-      logger.error("Erro nucleo progress:", e);
-      res.status(500).json({ success: false, message: "Erro interno" });
-    }
-  }
-
-  static async getXpHistory(req: Request, res: Response): Promise<void> {
-    try {
-      const userId = (req as any).user?.id;
-      const { limit = 20, nucleoId } = req.query as any;
-      let sql = `SELECT xl.*, n.nome AS nucleo_nome FROM xp_logs xl
-                 LEFT JOIN nucleos n ON n.id=xl.nucleo_id
-                 WHERE xl.user_id=$1`;
-      const params: any[] = [userId];
-      if (nucleoId) {
-        sql += ` AND xl.nucleo_id=$${params.push(nucleoId)}`;
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
       }
-      sql += ` ORDER BY xl.created_at DESC LIMIT $${params.push(parseInt(limit))}`;
-      const rows = await pool.query(sql, params);
-      res.json(
-        rows.rows.map((r) => ({
-          id: r.id,
-          xpAmount: r.xp_amount,
-          source: r.source,
-          nucleoId: r.nucleo_id,
-          nucleoNome: r.nucleo_nome,
-          createdAt: r.created_at,
-        })),
+
+      const stats =
+        await ProgressController.gamificationService.getUserStats(userId);
+
+      res.json({
+        success: true,
+        data: {
+          level: stats.level,
+          currentXp: stats.currentXp,
+          nextLevelXp: stats.nextLevelXp,
+          totalXp: stats.totalXp,
+          progressToNextLevel: stats.progressToNextLevel,
+          lastActionDate: stats.lastActionDate,
+        },
+      });
+    } catch (error) {
+      logger.error("Erro ao buscar XP:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Erro interno ao buscar XP" });
+    }
+  }
+
+  // GET /progress/energy - Buscar energia do usuário
+  static async getEnergy(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
+
+      const stats =
+        await ProgressController.gamificationService.getUserStats(userId);
+
+      const baseEnergy = 100;
+      const levelBonus = Math.min(stats.level * 2, 50);
+      const streakBonus = Math.min(stats.currentStreak, 30);
+      const actionBonus = Math.min(stats.todayXp / 10, 20);
+
+      let energy = baseEnergy + levelBonus + streakBonus + actionBonus;
+      energy = Math.min(energy, 200);
+
+      let regenAmount = 0;
+      if (stats.lastActionDate) {
+        const minutesSinceLastAction = Math.floor(
+          (new Date().getTime() - new Date(stats.lastActionDate).getTime()) /
+            (1000 * 60),
+        );
+        regenAmount = Math.min(Math.floor(minutesSinceLastAction / 5), 20);
+        energy = Math.min(energy + regenAmount, 200);
+      }
+
+      res.json({
+        success: true,
+        data: {
+          energy: Math.floor(energy),
+          maxEnergy: 200,
+          baseEnergy: baseEnergy,
+          levelBonus: levelBonus,
+          streakBonus: streakBonus,
+          actionBonus: actionBonus,
+          regenAmount: regenAmount,
+          lastActionDate: stats.lastActionDate,
+        },
+      });
+    } catch (error) {
+      logger.error("Erro ao buscar energia:", error);
+      res.json({
+        success: true,
+        data: {
+          energy: 100,
+          maxEnergy: 100,
+          baseEnergy: 100,
+          levelBonus: 0,
+          streakBonus: 0,
+          actionBonus: 0,
+          regenAmount: 0,
+          lastActionDate: null,
+        },
+      });
+    }
+  }
+
+  // POST /progress/energy/consume - Consumir energia
+  static async consumeEnergy(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      const { amount = 10, action } = req.body;
+
+      if (!userId) {
+        res.status(401).json({ success: false, message: "Não autenticado" });
+        return;
+      }
+
+      if (!amount || amount <= 0) {
+        res
+          .status(400)
+          .json({ success: false, message: "Quantidade de energia inválida" });
+        return;
+      }
+
+      const stats =
+        await ProgressController.gamificationService.getUserStats(userId);
+
+      const baseEnergy = 100;
+      const levelBonus = Math.min(stats.level * 2, 50);
+      const streakBonus = Math.min(stats.currentStreak, 30);
+      const actionBonus = Math.min(stats.todayXp / 10, 20);
+      const currentEnergy = Math.min(
+        baseEnergy + levelBonus + streakBonus + actionBonus,
+        200,
       );
-    } catch (e) {
-      logger.error("Erro xp history:", e);
-      res.status(500).json({ success: false, message: "Erro interno" });
+
+      if (currentEnergy < amount) {
+        res.status(400).json({
+          success: false,
+          message: "Energia insuficiente",
+          data: {
+            energy: currentEnergy,
+            required: amount,
+            missing: amount - currentEnergy,
+          },
+        });
+        return;
+      }
+
+      // TODO: Registrar consumo em uma tabela de logs se necessário
+      logger.info(
+        `[ENERGY] Usuário ${userId} consumiu ${amount} de energia para ação: ${action || "desconhecida"}`,
+      );
+
+      res.json({
+        success: true,
+        message: "Energia consumida com sucesso",
+        data: {
+          consumed: amount,
+          remaining: currentEnergy - amount,
+          action: action || "desconhecida",
+          timestamp: new Date(),
+        },
+      });
+    } catch (error) {
+      logger.error("Erro ao consumir energia:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Erro interno ao consumir energia" });
     }
   }
 }

@@ -1,7 +1,14 @@
-// // application/queries/gamificacao/get-user-level.query.ts
-// import { IRequest } from '../../common/mediator/mediator';
-// import { UserLevelDto } from '../../dto/gamificacao.dto';
+import { UserLevelRepository } from "../../../infrastructure/persistence/repositories/UserLevelRepository";
+import { GetUserLevelQuery } from "./get-user-level.query";
 
-// export interface GetUserLevelQuery extends IRequest<UserLevelDto> {
-//   userId: string;
-// }
+export class GetUserLevelHandler {
+  private repo: UserLevelRepository;
+
+  constructor() {
+    this.repo = new UserLevelRepository();
+  }
+
+  async execute(query: GetUserLevelQuery) {
+    return this.repo.findByUserId(query.userId);
+  }
+}

@@ -1,25 +1,36 @@
+// src/api/routes/gamificacao.routes.ts
 import { Router } from "express";
-import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
 import { GamificacaoController } from "../controllers/v1/GamificacaoController";
+import { authMiddleware, AuthRequest } from "../middlewares/auth.middleware";
 
-const router = Router();
+export const gamificacaoRoutes = Router();
+const controller = new GamificacaoController();
 
-router.use(authenticate);
+// aplica auth em tudo
+gamificacaoRoutes.use(authMiddleware);
 
-router.get("/gamificacao/level", (req, res, next) => {
-  GamificacaoController.getLevel(req as AuthRequest, res).catch(next);
+// Rotas principais
+gamificacaoRoutes.get("/stats", (req, res, next) => {
+  controller.getUserStats(req as AuthRequest, res).catch(next);
 });
 
-router.get("/gamificacao/conquistas", (req, res, next) => {
-  GamificacaoController.getConquistas(req as AuthRequest, res).catch(next);
+gamificacaoRoutes.get("/leaderboard", (req, res, next) => {
+  controller.getLeaderboard(req as AuthRequest, res).catch(next);
 });
 
-router.get("/gamificacao/streaks", (req, res, next) => {
-  GamificacaoController.getStreaks(req as AuthRequest, res).catch(next);
+gamificacaoRoutes.get("/achievements", (req, res, next) => {
+  controller.getAchievements(req as AuthRequest, res).catch(next);
 });
 
-// router.post("/gamificacao/add-xp", (req, res, next) => {
-//   GamificacaoController.addXp(req as AuthRequest, res).catch(next);
-// });
+gamificacaoRoutes.get("/history", (req, res, next) => {
+  controller.getXpHistory(req as AuthRequest, res).catch(next);
+});
 
-export { router };
+gamificacaoRoutes.get("/streak", (req, res, next) => {
+  controller.getStreak(req as AuthRequest, res).catch(next);
+});
+
+// opcional
+gamificacaoRoutes.post("/process-action", (req, res, next) => {
+  controller.processAction(req as AuthRequest, res).catch(next);
+});

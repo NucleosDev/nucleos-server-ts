@@ -12,7 +12,12 @@ export class XPDomainService {
     nucleoId?: string,
   ): { leveledUp: boolean; newLevel: number; xpLog: XpLog } {
     const { leveledUp, newLevel } = level.addXp(amount);
-    const xpLog = new XpLog({ userId, nucleoId, xpAmount: amount, source });
+    const xpLog = new XpLog(
+      userId, // userId
+      amount, // xpAmount
+      source, // source
+      nucleoId, // nucleoId (opcional)
+    );
     return { leveledUp, newLevel, xpLog };
   }
 

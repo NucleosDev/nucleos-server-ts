@@ -1,22 +1,18 @@
 // src/jobs/calculate-streaks.job.ts
-import { pool } from '../infrastructure/persistence/db/connection';
-import { logger } from '../shared/utils/logger';
+import cron from "node-cron";
+import { pool } from "../infrastructure/persistence/db/connection";
 
-/**
- * Verifica todos os streaks e zera os que ficaram sem atividade por mais de 1 dia.
- * Rodar diariamente (meia-noite).
- */
-export async function calculateStreaksJob(): Promise<void> {
+// Executar todo dia à meia-noite
+cron.schedule("0 0 * * *", async () => {
+  console.log("[Streak Job] Running streak check...");
   try {
-    const result = await pool.query(
-      `UPDATE streaks
-       SET current_streak = 0, updated_at = NOW()
-       WHERE last_activity_date < CURRENT_DATE - INTERVAL '1 day'
-         AND current_streak > 0
-       RETURNING id, user_id`,
+    await pool.query(
+      `UPDATE streaks 
+       SET current_streak = 0 
+       WHERE last_activity_date < CURRENT_DATE - INTERVAL '2 days'`,
     );
-    logger.info(`calculateStreaksJob: ${result.rowCount} streaks zerados`);
-  } catch (err) {
-    logger.error('Erro no calculateStreaksJob:', err);
+    console.log("[Streak Job] Completed successfully");
+  } catch (error) {
+    console.error("[Streak Job] Error:", error);
   }
-}
+});

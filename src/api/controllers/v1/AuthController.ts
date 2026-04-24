@@ -6,8 +6,7 @@ import { env, jwtConfig } from "../../../config/env";
 import { logger } from "../../../shared/utils/logger";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { CurrentUserService } from "../../../infrastructure/services/current-user.service";
-
-// TIPOS
+import { NotificationsController } from "./NotificationsController";
 
 interface UserTokenPayload extends JwtPayload {
   id: string;
@@ -459,6 +458,11 @@ export class AuthController {
         } as SignOptions,
       );
 
+      await NotificationsController.createNotification(
+        user.id,
+        "Você sabia que Nucleos surgiu de um projeto de faculdade? Loucura, não é?",
+        `Que bom que você chegou ${user.fullName || user.email}, aproveite sua jornada hoje!`,
+      );
       const expiresAt = new Date(
         Date.now() +
           (rememberMe
