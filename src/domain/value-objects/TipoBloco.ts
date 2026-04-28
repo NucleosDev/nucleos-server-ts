@@ -2,25 +2,27 @@ export type TipoBloco =
   | "tarefas"
   | "habitos"
   | "habito"
+  | "timer"
+  | "timers"
   | "notas"
   | "lista"
   | "calendario"
   | "calculo"
   | "colecoes"
-  | "timer";
+  | "canvas";
 
-export const TIPO_BLOCO_VALORES: TipoBloco[] = [
-  "tarefas",
-  "habitos",
-  "habito",
-  "notas",
-  "lista",
-  "calendario",
-  "calculo",
-  "colecoes",
-  "timer",
-];
-
-export function isTipoBloco(valor: string): valor is TipoBloco {
-  return TIPO_BLOCO_VALORES.includes(valor as TipoBloco);
+export function isTipoBloco(value: string): value is TipoBloco {
+  return [
+    "tarefas",
+    "habitos",
+    "habito",
+    "timer",
+    "timers",
+    "notas",
+    "lista",
+    "calendario",
+    "calculo",
+    "colecoes",
+    "canvas",
+  ].includes(value);
 }

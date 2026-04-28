@@ -1,3 +1,4 @@
+// src/application/commands/blocos/DeleteBlocoCommand.ts
 export class DeleteBlocoCommand {
   constructor(
     public readonly id: string,
