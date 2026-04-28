@@ -1,4 +1,4 @@
-
+// src/application/commands/blocos/UpdateBlocoCommand.ts
 export class UpdateBlocoCommand {
   constructor(
     public readonly id: string,
@@ -8,5 +8,7 @@ export class UpdateBlocoCommand {
     public readonly tipo?: string,
     public readonly posicao?: number,
     public readonly configuracoes?: Record<string, any>,
+    // NOVOS
+    public readonly parentId?: string | null,
   ) {}
 }

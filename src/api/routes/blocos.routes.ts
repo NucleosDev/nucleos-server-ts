@@ -1,3 +1,4 @@
+// src/api/routes/blocos.routes.ts
 import { Router } from "express";
 import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
 import { BlocosController } from "../controllers/v1/BlocosController";
@@ -10,11 +11,9 @@ import { GetBlocoByIdHandler } from "../../application/queries/blocos/GetBlocoBy
 import { BlocoRepository } from "../../infrastructure/persistence/repositories/BlocoRepository";
 import { NucleoRepository } from "../../infrastructure/persistence/repositories/NucleoRepository";
 
-// Repositories
 const blocoRepository = new BlocoRepository();
 const nucleoRepository = new NucleoRepository();
 
-// Handlers
 const createBlocoHandler = new CreateBlocoHandler(
   blocoRepository,
   nucleoRepository,
@@ -32,6 +31,7 @@ const blocosController = new BlocosController(
   reorderBlocosHandler,
   getBlocosByNucleoHandler,
   getBlocoByIdHandler,
+  blocoRepository, // NOVO
 );
 
 const router = Router();
@@ -39,8 +39,10 @@ const router = Router();
 router.get("/blocos/ping", (req, res) => {
   res.json({ message: "pong", timestamp: new Date().toISOString() });
 });
+
 router.use(authenticate);
 
+// Rotas existentes
 router.get("/blocos/nucleo/:nucleoId", (req, res, next) => {
   blocosController.getByNucleo(req as AuthRequest, res).catch(next);
 });
@@ -63,6 +65,27 @@ router.delete("/blocos/:id", (req, res, next) => {
 
 router.post("/blocos/reorder", (req, res, next) => {
   blocosController.reorder(req as AuthRequest, res).catch(next);
+});
+
+// NOVAS ROTAS
+router.get("/blocos/parent/:parentId", (req, res, next) => {
+  blocosController.getChildren(req as AuthRequest, res).catch(next);
+});
+
+router.get("/blocos/:id/ancestors", (req, res, next) => {
+  blocosController.getAncestors(req as AuthRequest, res).catch(next);
+});
+
+router.put("/blocos/:id/move", (req, res, next) => {
+  blocosController.move(req as AuthRequest, res).catch(next);
+});
+
+router.get("/blocos/canvas/:nucleoId", (req, res, next) => {
+  blocosController.getCanvasByNucleo(req as AuthRequest, res).catch(next);
+});
+
+router.put("/blocos/canvas/:nucleoId", (req, res, next) => {
+  blocosController.saveCanvasContent(req as AuthRequest, res).catch(next);
 });
 
 export { router };

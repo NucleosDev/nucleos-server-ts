@@ -1,8 +1,10 @@
+// src/application/commands/blocos/DeleteBlocoHandler.ts
 import { IBlocoRepository } from "../../../domain/repositories/IBlocoRepository";
 import { DeleteBlocoCommand } from "./DeleteBlocoCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
+
 
 export class DeleteBlocoHandler {
   constructor(private readonly blocoRepository: IBlocoRepository) {}
@@ -14,7 +16,6 @@ export class DeleteBlocoHandler {
       throw new Error("Usuário não autenticado");
     }
 
-    // Verificar permissão
     const nucleoCheck = await pool.query(
       `SELECT n.user_id, n.id FROM nucleos n
        INNER JOIN blocos b ON b.nucleo_id = n.id
