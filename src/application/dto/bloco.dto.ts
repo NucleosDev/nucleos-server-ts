@@ -35,6 +35,9 @@ export interface BlocoResponseDto {
   deletedAt: string | null;
   // novo
   parentId?: string | null;
+  path?: string | null;
+  depth?: number;
+  isCanvas?: boolean;
 }
 
 export interface ReorderBlocosDto {
