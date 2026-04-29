@@ -1,4 +1,4 @@
-// application/commands/blocos/CreateBlocoHandler.ts
+// src/application/commands/blocos/CreateBlocoHandler.ts
 import { IBlocoRepository } from "../../../domain/repositories/IBlocoRepository";
 import { INucleoRepository } from "../../../domain/repositories/INucleoRepository";
 import { CreateBlocoCommand } from "./CreateBlocoCommand";
@@ -9,8 +9,7 @@ import {
   TIPO_BLOCO_VALORES,
 } from "../../../domain/value-objects/TipoBloco";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
-import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
-import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
+
 export class CreateBlocoHandler {
   constructor(
     private readonly blocoRepository: IBlocoRepository,
@@ -18,71 +17,40 @@ export class CreateBlocoHandler {
   ) {}
 
   async execute(command: CreateBlocoCommand): Promise<any> {
-    const { userId, nucleoId, tipo, titulo, posicao, configuracoes } = command;
-
-    // 🔍 LOG 1: Mostrar o comando recebido
-    console.log("📥 [CreateBlocoHandler] Comando recebido:", {
-      userId,
-      nucleoId,
-      tipo,
-      titulo,
-      posicao,
-      configuracoes,
-    });
-
-    // 🔍 LOG 2: Verificar o tipo exato e seu prototype
-    console.log("📥 [CreateBlocoHandler] Tipo recebido:", JSON.stringify(tipo));
-    console.log("📥 [CreateBlocoHandler] typeof tipo:", typeof tipo);
+    const { userId, nucleoId, tipo, titulo, posicao, configuracoes, parentId } =
+      command;
 
     const nucleo = await this.nucleoRepository.findById(nucleoId, userId);
     if (!nucleo) {
       throw new NotFoundException("Núcleo", nucleoId);
     }
 
-    // 🔍 LOG 3: Mostrar os valores do enum TipoBloco
-    console.log(
-      "📥 [CreateBlocoHandler] Valores do enum TipoBloco:",
-      Object.values(TIPO_BLOCO_VALORES),
-    );
+    // Validar parent se fornecido
+    if (parentId) {
+      const parent = await this.blocoRepository.findById(parentId, nucleoId);
+      if (!parent) {
+        throw new NotFoundException("Bloco pai", parentId);
+      }
+    }
 
-    // 🔍 LOG 4: Testar isTipoBloco manualmente
-    const resultadoIsTipoBloco = isTipoBloco(tipo);
-    console.log(
-      "📥 [CreateBlocoHandler] isTipoBloco(tipo) retornou:",
-      resultadoIsTipoBloco,
-    );
-
-    //  Validar e converter tipo
-    if (!resultadoIsTipoBloco) {
-      console.error("❌ [CreateBlocoHandler] Tipo inválido detectado!");
-      console.error("❌ Tipo recebido:", tipo);
-      console.error("❌ Tipos válidos:", Object.values(TIPO_BLOCO_VALORES));
+    if (!isTipoBloco(tipo)) {
       throw new Error(
-        `Tipo de bloco inválido. Tipos válidos: ${Object.values(TIPO_BLOCO_VALORES).join(", ")}`,
+        `Tipo de bloco inválido. Tipos válidos: ${TIPO_BLOCO_VALORES.join(", ")}`,
       );
     }
 
-    //  Garantir que posicao seja number (fallback para 0)
     const posicaoFinal = posicao !== undefined ? posicao : 0;
 
-    // Usar Bloco.create com tipos corretos
     const bloco = Bloco.create({
       nucleoId,
       tipo: tipo as TipoBloco,
       titulo: titulo || null,
       posicao: posicaoFinal,
       configuracoes: configuracoes || {},
+      parentId: parentId || null,
     });
 
     await this.blocoRepository.save(bloco);
-
-    console.log(" [CreateBlocoHandler] Bloco criado com sucesso:", bloco.id);
-
-    await NotificationsController.createNotification(
-      command.userId,
-      "📦 Novo Bloco Criado!",
-      `Você criou o bloco "${bloco.titulo || bloco.tipo}" e ganhou 40 XP!`,
-    );
 
     return {
       id: bloco.id,
@@ -91,6 +59,10 @@ export class CreateBlocoHandler {
       titulo: bloco.titulo,
       posicao: bloco.posicao,
       configuracoes: bloco.configuracoes,
+      parentId: bloco.parentId,
+      path: bloco.path,
+      depth: bloco.depth,
+      isCanvas: bloco.isCanvas,
       createdAt: bloco.createdAt.toISOString(),
       updatedAt: bloco.updatedAt.toISOString(),
     };

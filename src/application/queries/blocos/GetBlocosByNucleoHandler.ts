@@ -1,13 +1,15 @@
+// src/application/queries/blocos/GetBlocosByNucleoHandler.ts
 import { IBlocoRepository } from "../../../domain/repositories/IBlocoRepository";
 import { GetBlocosByNucleoQuery } from "./GetBlocosByNucleoQuery";
-import { BlocoResponseDto } from "../../dto/bloco.dto";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 
 export class GetBlocosByNucleoHandler {
   constructor(private readonly blocoRepository: IBlocoRepository) {}
 
-  async execute(query: GetBlocosByNucleoQuery): Promise<BlocoResponseDto[]> {
-    const { nucleoId, userId } = query;
+  async execute(query: GetBlocosByNucleoQuery): Promise<any[]> {
+    const { nucleoId, userId, parentId } = query;
+
+    if (!userId) throw new Error("Usuário não autenticado");
 
     const nucleoCheck = await pool.query(
       `SELECT id FROM nucleos WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
@@ -18,18 +20,32 @@ export class GetBlocosByNucleoHandler {
       throw new Error("Núcleo não encontrado ou sem permissão");
     }
 
-    const blocos = await this.blocoRepository.findByNucleoId(nucleoId);
+    let blocos;
+    if (parentId !== undefined && parentId !== null) {
+      // Buscar filhos de um parent específico
+      blocos = await this.blocoRepository.findByParentId(parentId, nucleoId);
+    } else if (parentId === null) {
+      // Buscar apenas raízes
+      blocos = await this.blocoRepository.findRootBlocos(nucleoId);
+    } else {
+      // Comportamento original: todos os blocos
+      blocos = await this.blocoRepository.findByNucleoId(nucleoId);
+    }
 
-    return blocos.map((bloco) => ({
-      id: bloco.id,
-      nucleoId: bloco.nucleoId,
-      tipo: bloco.tipo,
-      titulo: bloco.titulo,
-      posicao: bloco.posicao,
-      configuracoes: bloco.configuracoes,
-      createdAt: bloco.createdAt.toISOString(),
-      updatedAt: bloco.updatedAt.toISOString(),
-      deletedAt: bloco.deletedAt?.toISOString() || null,
+    return blocos.map((b) => ({
+      id: b.id,
+      nucleoId: b.nucleoId,
+      tipo: b.tipo,
+      titulo: b.titulo,
+      posicao: b.posicao,
+      configuracoes: b.configuracoes,
+      parentId: b.parentId,
+      path: b.path,
+      depth: b.depth,
+      isCanvas: b.isCanvas,
+      createdAt: b.createdAt.toISOString(),
+      updatedAt: b.updatedAt.toISOString(),
+      deletedAt: b.deletedAt?.toISOString() || null,
     }));
   }
 }

@@ -7,11 +7,10 @@ RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Copiar arquivos de dependências
 COPY package*.json ./
 
-# Instalar todas as dependências (incluindo dev)
-RUN npm ci --legacy-peer-deps
+# Instala dependências (inclui dev para build)
+RUN npm ci
 
 # ============================================
 # Estágio 2: Build
@@ -20,15 +19,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copiar dependências do estágio anterior
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copiar código fonte e configs
 COPY package*.json ./
 COPY tsconfig.json ./
 COPY src ./src
 
-# Compilar TypeScript
 RUN npm run build
 
 # ============================================
@@ -36,39 +32,31 @@ RUN npm run build
 # ============================================
 FROM node:20-alpine AS production
 
-# Instalar dumb-init para gerenciar sinais corretamente
+ENV NODE_ENV=production
+
 RUN apk add --no-cache dumb-init
 
-# Criar usuário não-root para segurança
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 WORKDIR /app
 
-# Copiar apenas o necessário do build
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 
-# Instalar APENAS dependências de produção
-RUN npm ci --only=production --legacy-peer-deps && \
-    npm cache clean --force
+# Instala apenas dependências de produção
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Criar diretórios necessários
 RUN mkdir -p logs uploads temp && \
     chown -R nodejs:nodejs logs uploads temp
 
-# Trocar para usuário não-root
 USER nodejs
 
-# Expor porta da aplicação
 EXPOSE 5000
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD node -e "require('http').get('http://localhost:5000/health', (res) => {process.exit(res.statusCode === 200 ? 0 : 1)})"
 
-# Usar dumb-init para gerenciar sinais
 ENTRYPOINT ["dumb-init", "--"]
 
-# Comando para iniciar a aplicação
 CMD ["node", "dist/api/server.js"]

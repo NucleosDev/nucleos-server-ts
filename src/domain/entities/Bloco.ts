@@ -1,3 +1,4 @@
+// src/domain/entities/Bloco.ts
 import { v4 as uuidv4 } from "uuid";
 import { TipoBloco } from "../value-objects/TipoBloco";
 
@@ -8,6 +9,11 @@ export interface BlocoProps {
   titulo?: string | null;
   posicao: number;
   configuracoes?: Record<string, any>;
+  // NOVOS CAMPOS
+  parentId?: string | null;
+  path?: string | null;
+  depth?: number;
+  isCanvas?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -21,6 +27,11 @@ export class Bloco {
     private _titulo: string | null,
     private _posicao: number,
     private _configuracoes: Record<string, any>,
+    // NOVOS CAMPOS
+    private _parentId: string | null,
+    private _path: string | null,
+    private _depth: number,
+    private _isCanvas: boolean,
     private readonly _createdAt: Date,
     private _updatedAt: Date,
     private _deletedAt: Date | null,
@@ -38,13 +49,24 @@ export class Bloco {
       props.titulo || null,
       props.posicao ?? 0,
       props.configuracoes || {},
+      props.parentId || null,
+      props.path || null,
+      props.depth ?? 0,
+      props.isCanvas ?? false,
       props.createdAt || new Date(),
       props.updatedAt || new Date(),
       props.deletedAt || null,
     );
   }
 
-  static reconstitute(props: Required<BlocoProps>): Bloco {
+  static reconstitute(
+    props: Required<BlocoProps> & {
+      parentId?: string | null;
+      path?: string | null;
+      depth?: number;
+      isCanvas?: boolean;
+    },
+  ): Bloco {
     return new Bloco(
       props.id!,
       props.nucleoId,
@@ -52,13 +74,17 @@ export class Bloco {
       props.titulo || null,
       props.posicao,
       props.configuracoes || {},
+      props.parentId || null,
+      props.path || null,
+      props.depth ?? 0,
+      props.isCanvas ?? false,
       props.createdAt!,
       props.updatedAt!,
       props.deletedAt || null,
     );
   }
 
-  // Getters
+  // Getters existentes
   get id(): string {
     return this._id;
   }
@@ -90,7 +116,24 @@ export class Bloco {
     return this._deletedAt !== null;
   }
 
-  // Métodos de domínio
+  // NOVOS GETTERS
+  get parentId(): string | null {
+    return this._parentId;
+  }
+  get path(): string | null {
+    return this._path;
+  }
+  get depth(): number {
+    return this._depth;
+  }
+  get isCanvas(): boolean {
+    return this._isCanvas;
+  }
+  get isRoot(): boolean {
+    return this._parentId === null;
+  }
+
+  // Métodos de domínio existentes
   updateTitulo(titulo: string | null): void {
     this._titulo = titulo;
     this.touch();
@@ -108,6 +151,17 @@ export class Bloco {
 
   updateConfiguracoes(configuracoes: Record<string, any>): void {
     this._configuracoes = { ...this._configuracoes, ...configuracoes };
+    this.touch();
+  }
+
+  // NOVOS MÉTODOS DE DOMÍNIO
+  moveToParent(parentId: string | null): void {
+    this._parentId = parentId;
+    this.touch();
+  }
+
+  markAsCanvas(): void {
+    this._isCanvas = true;
     this.touch();
   }
 
@@ -133,6 +187,10 @@ export class Bloco {
       titulo: this._titulo,
       posicao: this._posicao,
       configuracoes: this._configuracoes,
+      parentId: this._parentId,
+      path: this._path,
+      depth: this._depth,
+      isCanvas: this._isCanvas,
       createdAt: this._createdAt.toISOString(),
       updatedAt: this._updatedAt.toISOString(),
       deletedAt: this._deletedAt?.toISOString() || null,
