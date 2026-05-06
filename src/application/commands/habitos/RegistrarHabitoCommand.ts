@@ -1,3 +1,5 @@
+// application/commands/habitos/RegistrarHabitoCommand.ts
+
 export class RegistrarHabitoCommand {
   constructor(
     public readonly habitoId: string,

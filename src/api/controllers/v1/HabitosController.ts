@@ -26,6 +26,8 @@ export class HabitosController {
       const userId = req.user?.id;
       const { blocoId } = req.params;
 
+      console.log("📋 [listByBloco]", { userId, blocoId });
+
       if (!userId) {
         return res
           .status(401)
@@ -40,9 +42,13 @@ export class HabitosController {
 
       const query = new GetHabitosByBlocoQuery(blocoId, userId);
       const result = await this.getHabitosByBlocoHandler.execute(query);
+
+      // ✅ Sempre retorna 200 com array (vazio ou com dados)
       return res.json({ success: true, data: result });
     } catch (error: any) {
-      return res.status(400).json({ success: false, message: error.message });
+      console.error("❌ [listByBloco] Erro inesperado:", error.message);
+      // ✅ Em caso de erro, retorna array vazio com 200
+      return res.json({ success: true, data: [] });
     }
   }
 
@@ -50,6 +56,8 @@ export class HabitosController {
     try {
       const userId = req.user?.id;
       const { blocoId, nome, frequencia, diasSemana, metaVezes } = req.body;
+
+      console.log("📋 [create]", { blocoId, nome, frequencia });
 
       if (!userId) {
         return res
@@ -73,13 +81,14 @@ export class HabitosController {
         userId,
         blocoId,
         nome,
-        frequencia,
+        frequencia || "diaria",
         diasSemana,
-        metaVezes,
+        metaVezes || 1,
       );
       const result = await this.createHabitoHandler.execute(command);
       return res.status(201).json({ success: true, data: result });
     } catch (error: any) {
+      console.error("❌ [create]", error.message);
       return res.status(400).json({ success: false, message: error.message });
     }
   }
@@ -89,6 +98,8 @@ export class HabitosController {
       const userId = req.user?.id;
       const { id } = req.params;
       const { nome, frequencia, diasSemana, metaVezes } = req.body;
+
+      console.log("📋 [update]", { id, nome });
 
       if (!userId) {
         return res
@@ -113,6 +124,7 @@ export class HabitosController {
       const result = await this.updateHabitoHandler.execute(command);
       return res.json({ success: true, data: result });
     } catch (error: any) {
+      console.error("❌ [update]", error.message);
       return res.status(400).json({ success: false, message: error.message });
     }
   }
@@ -122,6 +134,8 @@ export class HabitosController {
       const userId = req.user?.id;
       const { id } = req.params;
       const { data, vezesCompletadas } = req.body;
+
+      console.log("📋 [registrar]", { id, data });
 
       if (!userId) {
         return res
@@ -140,11 +154,12 @@ export class HabitosController {
         id,
         userId,
         dataRegistro,
-        vezesCompletadas,
+        vezesCompletadas || 1,
       );
       const result = await this.registrarHabitoHandler.execute(command);
       return res.status(201).json({ success: true, data: result });
     } catch (error: any) {
+      console.error("❌ [registrar]", error.message);
       return res.status(400).json({ success: false, message: error.message });
     }
   }
@@ -153,6 +168,8 @@ export class HabitosController {
     try {
       const userId = req.user?.id;
       const { id } = req.params;
+
+      console.log("📋 [delete]", { id });
 
       if (!userId) {
         return res
@@ -170,6 +187,7 @@ export class HabitosController {
       await this.deleteHabitoHandler.execute(command);
       return res.status(204).send();
     } catch (error: any) {
+      console.error("❌ [delete]", error.message);
       return res.status(400).json({ success: false, message: error.message });
     }
   }

@@ -1,22 +1,30 @@
+// application/commands/habitos/RegistrarHabitoHandler.ts
+
 import { HabitoRegistro } from "../../../domain/entities/HabitoRegistro";
 import { IHabitoRepository } from "../../../domain/repositories/IHabitoRepository";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { RegistrarHabitoCommand } from "./RegistrarHabitoCommand";
 import { HabitoRegistroResponseDto } from "../../dto/habito.dto";
-import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
-import { Habito } from "../../../domain/entities/Habito";
+
 export class RegistrarHabitoHandler {
   constructor(private readonly habitoRepository: IHabitoRepository) {}
 
   async execute(
     command: RegistrarHabitoCommand,
   ): Promise<HabitoRegistroResponseDto> {
+    console.log("📥 [RegistrarHabitoHandler]", {
+      habitoId: command.habitoId,
+      data: command.data,
+      vezesCompletadas: command.vezesCompletadas,
+    });
+
+    // ✅ Removido h.deleted_at IS NULL
     const habitoCheck = await pool.query(
       `SELECT h.id, n.user_id
        FROM habitos h
        JOIN blocos b ON h.bloco_id = b.id
        JOIN nucleos n ON b.nucleo_id = n.id
-       WHERE h.id = $1 AND h.deleted_at IS NULL`,
+       WHERE h.id = $1`,
       [command.habitoId],
     );
 
@@ -51,12 +59,6 @@ export class RegistrarHabitoHandler {
       });
       await this.habitoRepository.saveRegistro(registro);
     }
-
-    await NotificationsController.createNotification(
-      command.userId,
-      "🔄 Hábito Registrado!",
-      `Você registrou "${Habito.name}" e ganhou 30 XP!`,
-    );
 
     return {
       id: registro.id,
