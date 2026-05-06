@@ -1,3 +1,5 @@
+// application/commands/habitos/DeleteHabitoHandler.ts
+
 import { IHabitoRepository } from "../../../domain/repositories/IHabitoRepository";
 import { DeleteHabitoCommand } from "./DeleteHabitoCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
@@ -6,12 +8,13 @@ export class DeleteHabitoHandler {
   constructor(private readonly habitoRepository: IHabitoRepository) {}
 
   async execute(command: DeleteHabitoCommand): Promise<void> {
+    // ✅ Removido AND h.deleted_at IS NULL
     const habitoCheck = await pool.query(
       `SELECT h.id, n.user_id
        FROM habitos h
        JOIN blocos b ON h.bloco_id = b.id
        JOIN nucleos n ON b.nucleo_id = n.id
-       WHERE h.id = $1 AND h.deleted_at IS NULL`,
+       WHERE h.id = $1`,
       [command.id],
     );
 
