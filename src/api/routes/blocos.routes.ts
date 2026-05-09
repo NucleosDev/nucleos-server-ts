@@ -80,6 +80,11 @@ router.put("/blocos/:id/move", (req, res, next) => {
   blocosController.move(req as AuthRequest, res).catch(next);
 });
 
+// Atualização atômica de conteúdo — substituição do save-por-blob-completo
+router.patch("/blocos/:id/content", (req, res, next) => {
+  blocosController.patchContent(req as AuthRequest, res).catch(next);
+});
+
 router.get("/blocos/canvas/:nucleoId", (req, res, next) => {
   blocosController.getCanvasByNucleo(req as AuthRequest, res).catch(next);
 });

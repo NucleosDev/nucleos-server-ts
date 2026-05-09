@@ -3,6 +3,10 @@ import { DeleteTarefaCommand } from "./DeleteTarefaCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
+import {
+  deleteCache,
+  CacheKeys,
+} from "../../../infrastructure/cache/redis.service";
 
 export class DeleteTarefaHandler {
   constructor(private readonly tarefaRepository: ITarefaRepository) {}
@@ -35,5 +39,6 @@ export class DeleteTarefaHandler {
     }
 
     await this.tarefaRepository.delete(id);
+    await deleteCache(CacheKeys.tarefasByBloco(tarefa.blocoId));
   }
 }

@@ -4,7 +4,11 @@ import { DeleteBlocoCommand } from "./DeleteBlocoCommand";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
-
+import {
+  deleteCacheByPrefix,
+  deleteCache,
+  CacheKeys,
+} from "../../../infrastructure/cache/redis.service";
 
 export class DeleteBlocoHandler {
   constructor(private readonly blocoRepository: IBlocoRepository) {}
@@ -33,6 +37,11 @@ export class DeleteBlocoHandler {
       );
     }
 
+    const nucleoId: string = nucleoCheck.rows[0].id;
     await this.blocoRepository.delete(id);
+    await Promise.all([
+      deleteCacheByPrefix(CacheKeys.blocosByNucleo(nucleoId)),
+      deleteCache(CacheKeys.blocoById(id)),
+    ]);
   }
 }

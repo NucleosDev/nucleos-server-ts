@@ -12,84 +12,136 @@ export const initRedis = async (): Promise<void> => {
       maxRetriesPerRequest: 3,
       retryStrategy: (times) => {
         if (times > 3) {
-          logger.warn("Redis: Não foi possível conectar após 3 tentativas");
-          return null; // Para de tentar
+          logger.warn("Redis: could not connect after 3 attempts, disabling");
+          return null;
         }
         return Math.min(times * 100, 3000);
       },
+      lazyConnect: true,
     });
 
-    // Testar conexão
     await redisClient.ping();
     redisAvailable = true;
-    logger.info("Redis conectado com sucesso");
+    logger.info("Redis connected");
   } catch (error) {
     redisAvailable = false;
-    logger.warn("Redis não disponível, usando cache em memória");
+    redisClient = null;
+    logger.warn("Redis unavailable — using in-memory cache fallback");
   }
 };
 
-export const getRedisClient = (): Redis | null => {
-  return redisAvailable ? redisClient : null;
-};
+export const getRedisClient = (): Redis | null =>
+  redisAvailable ? redisClient : null;
 
-export const isRedisAvailable = (): boolean => {
-  return redisAvailable;
-};
+export const isRedisAvailable = (): boolean => redisAvailable;
 
-// Cache em memória (fallback)
-const memoryCache = new Map<string, { value: any; expiresAt: number }>();
+// ─── In-memory fallback ───────────────────────────────────────────────────
 
-export const getCache = async (key: string): Promise<any | null> => {
+const memoryCache = new Map<string, { value: unknown; expiresAt: number }>();
+
+// Prune expired entries periodically to prevent unbounded growth
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [k, v] of memoryCache) {
+      if (v.expiresAt < now) memoryCache.delete(k);
+    }
+  },
+  60 * 1000,
+);
+
+// ─── Public API ───────────────────────────────────────────────────────────
+
+export const getCache = async <T = unknown>(key: string): Promise<T | null> => {
   if (redisAvailable && redisClient) {
-    const data = await redisClient.get(key);
-    return data ? JSON.parse(data) : null;
+    try {
+      const data = await redisClient.get(key);
+      return data ? (JSON.parse(data) as T) : null;
+    } catch {
+      return null;
+    }
   }
 
-  // Fallback para memória
   const item = memoryCache.get(key);
-  if (item && item.expiresAt > Date.now()) {
-    return item.value;
-  }
+  if (item && item.expiresAt > Date.now()) return item.value as T;
   memoryCache.delete(key);
   return null;
 };
 
 export const setCache = async (
   key: string,
-  value: any,
-  ttlSeconds: number = 3600,
+  value: unknown,
+  ttlSeconds = 300,
 ): Promise<void> => {
   if (redisAvailable && redisClient) {
-    await redisClient.set(key, JSON.stringify(value), "EX", ttlSeconds);
+    try {
+      await redisClient.set(key, JSON.stringify(value), "EX", ttlSeconds);
+    } catch {
+      // fall through to memory
+    }
     return;
   }
-
-  // Fallback para memória
-  memoryCache.set(key, {
-    value,
-    expiresAt: Date.now() + ttlSeconds * 1000,
-  });
+  memoryCache.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
 };
 
 export const deleteCache = async (key: string): Promise<void> => {
   if (redisAvailable && redisClient) {
-    await redisClient.del(key);
+    try {
+      await redisClient.del(key);
+    } catch {}
   }
   memoryCache.delete(key);
 };
 
+export const deleteCacheByPrefix = async (prefix: string): Promise<void> => {
+  if (redisAvailable && redisClient) {
+    try {
+      const keys = await redisClient.keys(`${prefix}*`);
+      if (keys.length > 0) await redisClient.del(...keys);
+    } catch {}
+  }
+  for (const k of memoryCache.keys()) {
+    if (k.startsWith(prefix)) memoryCache.delete(k);
+  }
+};
+
 export const clearCache = async (): Promise<void> => {
   if (redisAvailable && redisClient) {
-    await redisClient.flushall();
+    try {
+      await redisClient.flushdb();
+    } catch {}
   }
   memoryCache.clear();
 };
 
-// Graceful shutdown
 export const closeRedis = async (): Promise<void> => {
   if (redisClient) {
     await redisClient.quit();
     logger.info("Redis connection closed");
   }
 };
+
+// ─── Cache key helpers ────────────────────────────────────────────────────
+
+export const CacheKeys = {
+  habitosByBloco: (blocoId: string) => `habitos:bloco:${blocoId}`,
+  blocosByNucleo: (nucleoId: string) => `blocos:nucleo:${nucleoId}`,
+  blocoById: (blocoId: string) => `bloco:${blocoId}`,
+  nucleosByUser: (userId: string) => `nucleos:user:${userId}`,
+  nucleoById: (nucleoId: string) => `nucleo:${nucleoId}`,
+  tarefasByBloco: (blocoId: string) => `tarefas:bloco:${blocoId}`,
+  listasByBloco: (blocoId: string) => `listas:bloco:${blocoId}`,
+  listaById: (listaId: string) => `lista:${listaId}`,
+  itensByLista: (listaId: string) => `itens:lista:${listaId}`,
+  colecoesByBloco: (blocoId: string) => `colecoes:bloco:${blocoId}`,
+  colecaoById: (colecaoId: string) => `colecao:${colecaoId}`,
+  calendarioByNucleo: (nucleoId: string) => `calendario:nucleo:${nucleoId}`,
+  timersByNucleo: (nucleoId: string) => `timers:nucleo:${nucleoId}`,
+  gamificacaoByUser: (userId: string) => `gamificacao:user:${userId}`,
+} as const;
+
+export const TTL = {
+  SHORT: 60,
+  DEFAULT: 300,
+  LONG: 1800,
+} as const;

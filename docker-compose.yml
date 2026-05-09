@@ -6,16 +6,19 @@ services:
     container_name: nucleos-api
 
     ports:
-      - "5000:5000"
+      - "7000:7000"
       - "9229:9229"
 
     environment:
       NODE_ENV: development
-      PORT: 5000
+      PORT: 7000
       API_VERSION: v1
       REDIS_URL: redis://redis:6379
       DATABASE_URL: ${DATABASE_URL}
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_KEY: ${JWT_KEY}
+      JWT_ISSUER: ${JWT_ISSUER:-http://localhost:7000}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-http://localhost:3000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
 
     volumes:
       - .:/app
@@ -25,9 +28,29 @@ services:
 
     command: npm run dev
 
+    depends_on:
+      redis:
+        condition: service_healthy
+
     networks:
       - nucleos-network
 
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: nucleos-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - nucleos-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
 networks:
@@ -37,3 +60,4 @@ networks:
 volumes:
   logs:
   uploads:
+  redis-data:

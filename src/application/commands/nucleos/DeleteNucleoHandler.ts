@@ -2,6 +2,10 @@ import { INucleoRepository } from "../../../domain/repositories/INucleoRepositor
 import { DeleteNucleoCommand } from "./DeleteNucleoCommand";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
+import {
+  deleteCache,
+  CacheKeys,
+} from "../../../infrastructure/cache/redis.service";
 
 export class DeleteNucleoHandler {
   constructor(private readonly nucleoRepository: INucleoRepository) {}
@@ -26,5 +30,9 @@ export class DeleteNucleoHandler {
     }
 
     await this.nucleoRepository.delete(id, userId);
+    await Promise.all([
+      deleteCache(CacheKeys.nucleosByUser(userId)),
+      deleteCache(CacheKeys.nucleoById(id)),
+    ]);
   }
 }

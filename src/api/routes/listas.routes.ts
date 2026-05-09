@@ -23,7 +23,7 @@ const listaRepository = new ListaRepository();
 const createListaHandler = new CreateListaHandler(listaRepository);
 const updateListaHandler = new UpdateListaHandler(listaRepository);
 const deleteListaHandler = new DeleteListaHandler(listaRepository);
-const getListasByBlocoHandler = new GetListasByBlocoHandler(listaRepository);
+const getListasByBlocoHandler = new GetListasByBlocoHandler();
 const getListaByIdHandler = new GetListaByIdHandler(); // ou com repositório se necessário
 
 const createItemHandler = new CreateItemListaHandler(listaRepository);

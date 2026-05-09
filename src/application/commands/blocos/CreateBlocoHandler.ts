@@ -9,6 +9,12 @@ import {
   TIPO_BLOCO_VALORES,
 } from "../../../domain/value-objects/TipoBloco";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
+import {
+  deleteCacheByPrefix,
+  CacheKeys,
+} from "../../../infrastructure/cache/redis.service";
+import { eventDispatcher } from "../../../shared/EventDispatcher";
+import { BlocoCriadoEvent } from "../../../domain/events/BlocoCriadoEvent";
 
 export class CreateBlocoHandler {
   constructor(
@@ -51,6 +57,11 @@ export class CreateBlocoHandler {
     });
 
     await this.blocoRepository.save(bloco);
+    await deleteCacheByPrefix(CacheKeys.blocosByNucleo(nucleoId));
+
+    await eventDispatcher.dispatch(
+      new BlocoCriadoEvent(userId, bloco.id, bloco.titulo ?? bloco.tipo, nucleoId, bloco.tipo),
+    );
 
     return {
       id: bloco.id,

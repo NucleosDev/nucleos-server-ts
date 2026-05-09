@@ -1,16 +1,22 @@
-import { IListaRepository } from "../../../domain/repositories/IListaRepository";
-import { GetListasByBlocoQuery } from "./GetListasByBlocoQuery";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import { GetListasByBlocoQuery } from "./GetListasByBlocoQuery";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
+import {
+  getCache,
+  setCache,
+  CacheKeys,
+  TTL,
+} from "../../../infrastructure/cache/redis.service";
 
 export class GetListasByBlocoHandler {
-  constructor(private readonly listaRepository: IListaRepository) {}
-
   async execute(query: GetListasByBlocoQuery): Promise<any[]> {
     const { blocoId, userId } = query;
 
-    // Verificar permissão
+    const cacheKey = CacheKeys.listasByBloco(blocoId);
+    const cached = await getCache<any[]>(cacheKey);
+    if (cached) return cached;
+
     const blocoCheck = await pool.query(
       `SELECT n.user_id FROM blocos b
        JOIN nucleos n ON n.id = b.nucleo_id
@@ -18,10 +24,7 @@ export class GetListasByBlocoHandler {
       [blocoId],
     );
 
-    if (blocoCheck.rows.length === 0) {
-      throw new NotFoundException("Bloco", blocoId);
-    }
-
+    if (blocoCheck.rows.length === 0) throw new NotFoundException("Bloco", blocoId);
     if (blocoCheck.rows[0].user_id !== userId) {
       throw new ForbiddenException("Sem permissão para ver listas deste bloco");
     }
@@ -34,7 +37,7 @@ export class GetListasByBlocoHandler {
       [blocoId],
     );
 
-    return result.rows.map((row) => ({
+    const data = result.rows.map((row) => ({
       id: row.id,
       blocoId: row.bloco_id,
       nome: row.nome,
@@ -42,5 +45,8 @@ export class GetListasByBlocoHandler {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     }));
+
+    await setCache(cacheKey, data, TTL.DEFAULT);
+    return data;
   }
 }

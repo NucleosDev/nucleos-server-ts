@@ -3,6 +3,7 @@ import { Router } from "express";
 import { authenticate, AuthRequest } from "../middlewares/auth.middleware";
 import { TarefasController } from "../controllers/v1/TarefasController";
 import { CreateTarefaHandler } from "../../application/commands/tarefas/CreateTarefaHandler";
+import { UpdateTarefaHandler } from "../../application/commands/tarefas/UpdateTarefaHandler";
 import { ConcluirTarefaHandler } from "../../application/commands/tarefas/ConcluirTarefaHandler";
 import { DeleteTarefaHandler } from "../../application/commands/tarefas/DeleteTarefaHandler";
 import { GetTarefasByBlocoHandler } from "../../application/queries/tarefas/GetTarefasByBlocoHandler";
@@ -11,17 +12,16 @@ import { TarefaRepository } from "../../infrastructure/persistence/repositories/
 
 const tarefaRepository = new TarefaRepository();
 
-//  Handlers SEM CurrentUserService
 const createTarefaHandler = new CreateTarefaHandler(tarefaRepository);
+const updateTarefaHandler = new UpdateTarefaHandler(tarefaRepository);
 const concluirTarefaHandler = new ConcluirTarefaHandler(tarefaRepository);
 const deleteTarefaHandler = new DeleteTarefaHandler(tarefaRepository);
 const getTarefasByBlocoHandler = new GetTarefasByBlocoHandler(tarefaRepository);
-const getTarefasVencendoHandler = new GetTarefasVencendoHandler(
-  tarefaRepository,
-);
+const getTarefasVencendoHandler = new GetTarefasVencendoHandler(tarefaRepository);
 
 const tarefasController = new TarefasController(
   createTarefaHandler,
+  updateTarefaHandler,
   concluirTarefaHandler,
   deleteTarefaHandler,
   getTarefasByBlocoHandler,
@@ -36,6 +36,10 @@ tarefasRoutes.get("/bloco/:blocoId", authenticate, (req, res, next) => {
 
 tarefasRoutes.get("/vencendo", authenticate, (req, res, next) => {
   tarefasController.listVencendo(req as AuthRequest, res).catch(next);
+});
+
+tarefasRoutes.put("/:id", authenticate, (req, res, next) => {
+  tarefasController.update(req as AuthRequest, res).catch(next);
 });
 
 tarefasRoutes.post("/:id/concluir", authenticate, (req, res, next) => {

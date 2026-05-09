@@ -9,7 +9,7 @@ export interface BlocoProps {
   titulo?: string | null;
   posicao: number;
   configuracoes?: Record<string, any>;
-  // NOVOS CAMPOS
+  conteudo?: string | null;
   parentId?: string | null;
   path?: string | null;
   depth?: number;
@@ -27,7 +27,7 @@ export class Bloco {
     private _titulo: string | null,
     private _posicao: number,
     private _configuracoes: Record<string, any>,
-    // NOVOS CAMPOS
+    private _conteudo: string | null,
     private _parentId: string | null,
     private _path: string | null,
     private _depth: number,
@@ -49,6 +49,7 @@ export class Bloco {
       props.titulo || null,
       props.posicao ?? 0,
       props.configuracoes || {},
+      props.conteudo ?? null,
       props.parentId || null,
       props.path || null,
       props.depth ?? 0,
@@ -74,6 +75,7 @@ export class Bloco {
       props.titulo || null,
       props.posicao,
       props.configuracoes || {},
+      props.conteudo ?? null,
       props.parentId || null,
       props.path || null,
       props.depth ?? 0,
@@ -102,6 +104,9 @@ export class Bloco {
   }
   get configuracoes(): Record<string, any> {
     return this._configuracoes;
+  }
+  get conteudo(): string | null {
+    return this._conteudo;
   }
   get createdAt(): Date {
     return this._createdAt;
@@ -187,6 +192,7 @@ export class Bloco {
       titulo: this._titulo,
       posicao: this._posicao,
       configuracoes: this._configuracoes,
+      conteudo: this._conteudo,
       parentId: this._parentId,
       path: this._path,
       depth: this._depth,

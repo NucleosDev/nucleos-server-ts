@@ -221,6 +221,7 @@ export class BlocoRepository implements IBlocoRepository {
       titulo: row.titulo,
       posicao: row.posicao,
       configuracoes,
+      conteudo: row.conteudo ?? null,
       parentId: row.parent_id || null,
       path: row.path || null,
       depth: row.depth ?? 0,

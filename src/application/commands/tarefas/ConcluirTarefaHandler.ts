@@ -5,6 +5,13 @@ import { pool } from "../../../infrastructure/persistence/db/connection";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
+import {
+  deleteCache,
+  CacheKeys,
+} from "../../../infrastructure/cache/redis.service";
+import { eventDispatcher } from "../../../shared/EventDispatcher";
+import { TarefaConcluidaEvent } from "../../../domain/events/TarefaConcluidaEvent";
+
 export class ConcluirTarefaHandler {
   constructor(private readonly tarefaRepository: ITarefaRepository) {}
 
@@ -37,6 +44,12 @@ export class ConcluirTarefaHandler {
 
     tarefa.concluir();
     await this.tarefaRepository.update(tarefa);
+    await deleteCache(CacheKeys.tarefasByBloco(tarefa.blocoId));
+
+    await eventDispatcher.dispatch(
+      new TarefaConcluidaEvent(command.userId, tarefa.id, tarefa.titulo),
+    );
+
     await NotificationsController.createNotification(
       command.userId,
       "Tarefa Concluída!",
