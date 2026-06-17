@@ -23,6 +23,7 @@ import { progressRoutes } from "./progress.routes";
 import { notificationsRoutes } from "./notifications.routes";
 import { router as timersRoutes } from "./timers.routes";
 import { calendarioRoutes } from "./calendario.routes";
+import { exerciciosRoutes } from "./exercicios.routes";
 
 const router = Router();
 
@@ -39,5 +40,6 @@ router.use("/users", usersRoutes);
 router.use("/notifications", notificationsRoutes);
 router.use("/timers", timersRoutes);
 router.use("/calendario", calendarioRoutes);
+router.use("/exercicios", exerciciosRoutes);
 
 export { router };

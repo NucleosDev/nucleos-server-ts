@@ -6,8 +6,12 @@ export enum TipoBloco {
   CALENDARIO = "calendario",
   CALCULO = "calculo",
   COLECOES = "colecoes",
+  TABELA = "tabela",
+  GALERIA = "galeria",
+  QUADRO = "quadro",
   TIMER = "timer",
   TIMERS = "timers",
+  EXERCICIOS = "exercicios",
 }
 
 export const isTipoBloco = (value: string): value is TipoBloco => {

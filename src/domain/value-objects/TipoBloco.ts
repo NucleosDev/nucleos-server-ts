@@ -10,6 +10,10 @@ export type TipoBloco =
   | "calendario"
   | "calculo"
   | "colecoes"
+  | "tabela"
+  | "galeria"
+  | "quadro"
+  | "exercicios"
   | "canvas"
   // Document text block types
   | "paragraph"
@@ -36,6 +40,10 @@ export const TIPO_BLOCO_VALORES: readonly string[] = [
   "calendario",
   "calculo",
   "colecoes",
+  "tabela",
+  "galeria",
+  "quadro",
+  "exercicios",
   "canvas",
   "paragraph",
   "h1",
