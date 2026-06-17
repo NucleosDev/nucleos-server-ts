@@ -2,7 +2,24 @@
 import "dotenv/config";
 import { z } from "zod";
 
-// SCHEMA DE VALIDAÇÃO - SMTP AGORA OPCIONAL
+// If DATABASE_URL is set (Render, Railway, etc.), parse and inject individual vars
+if (process.env.DATABASE_URL) {
+  try {
+    const url = new URL(process.env.DATABASE_URL);
+    process.env.SUPABASE_HOST = process.env.SUPABASE_HOST || url.hostname;
+    process.env.SUPABASE_PORT =
+      process.env.SUPABASE_PORT || url.port || "5432";
+    process.env.SUPABASE_DATABASE =
+      process.env.SUPABASE_DATABASE || url.pathname.slice(1);
+    process.env.SUPABASE_USERNAME =
+      process.env.SUPABASE_USERNAME || url.username;
+    process.env.SUPABASE_PASSWORD =
+      process.env.SUPABASE_PASSWORD || url.password;
+  } catch {
+    // DATABASE_URL parse failed, relying on individual vars
+  }
+}
+
 const envSchema = z.object({
   // Server
   NODE_ENV: z
@@ -11,7 +28,7 @@ const envSchema = z.object({
   PORT: z.string().transform(Number).default("5000"),
   API_VERSION: z.string().default("v1"),
 
-  // Supabase Database
+  // Database (can come from DATABASE_URL above or set individually)
   SUPABASE_HOST: z.string().min(1, "SUPABASE_HOST é obrigatório"),
   SUPABASE_PORT: z.string().transform(Number).default("5432"),
   SUPABASE_DATABASE: z.string().min(1, "SUPABASE_DATABASE é obrigatório"),

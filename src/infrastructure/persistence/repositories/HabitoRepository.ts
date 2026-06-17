@@ -1,15 +1,21 @@
+// infrastructure/persistence/repositories/HabitoRepository.ts
+
 import { pool } from "../db/connection";
 import { Habito, FrequenciaHabito } from "../../../domain/entities/Habito";
 import { HabitoRegistro } from "../../../domain/entities/HabitoRegistro";
 import { IHabitoRepository } from "../../../domain/repositories/IHabitoRepository";
 
 export class HabitoRepository implements IHabitoRepository {
-  // crud habitos
-
   async save(habito: Habito): Promise<void> {
+    // ✅ NÃO usar JSON.stringify! Passar o array diretamente.
+    console.log("💾 [HabitoRepository.save]", {
+      diasSemana: habito.diasSemana,
+      isArray: Array.isArray(habito.diasSemana),
+    });
+
     await pool.query(
       `INSERT INTO habitos (id, bloco_id, nome, frequencia, dias_semana, meta_vezes, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       VALUES ($1, $2, $3, $4, $5::integer[], $6, $7, $8)
        ON CONFLICT (id) DO UPDATE SET
          nome = EXCLUDED.nome,
          frequencia = EXCLUDED.frequencia,
@@ -21,8 +27,8 @@ export class HabitoRepository implements IHabitoRepository {
         habito.blocoId,
         habito.nome,
         habito.frequencia,
-        habito.diasSemana ? JSON.stringify(habito.diasSemana) : null,
-        habito.metaVezes,
+        habito.diasSemana || null, // ✅ Passa o array diretamente (number[] | null)
+        habito.metaVezes || null,
         habito.createdAt,
         habito.updatedAt,
       ],
@@ -31,7 +37,7 @@ export class HabitoRepository implements IHabitoRepository {
 
   async findById(id: string): Promise<Habito | null> {
     const result = await pool.query(
-      `SELECT * FROM habitos WHERE id = $1 AND deleted_at IS NULL`,
+      `SELECT * FROM habitos WHERE id = $1`, // ✅ Removido AND deleted_at IS NULL
       [id],
     );
     if (result.rows.length === 0) return null;
@@ -41,7 +47,7 @@ export class HabitoRepository implements IHabitoRepository {
   async findAllByBlocoId(blocoId: string): Promise<Habito[]> {
     const result = await pool.query(
       `SELECT * FROM habitos 
-       WHERE bloco_id = $1 AND deleted_at IS NULL 
+       WHERE bloco_id = $1  -- ✅ Removido AND deleted_at IS NULL
        ORDER BY created_at ASC`,
       [blocoId],
     );
@@ -49,15 +55,16 @@ export class HabitoRepository implements IHabitoRepository {
   }
 
   async update(habito: Habito): Promise<void> {
+    // ✅ NÃO usar JSON.stringify!
     await pool.query(
       `UPDATE habitos 
-       SET nome = $1, frequencia = $2, dias_semana = $3, meta_vezes = $4, updated_at = $5
+       SET nome = $1, frequencia = $2, dias_semana = $3::integer[], meta_vezes = $4, updated_at = $5
        WHERE id = $6`,
       [
         habito.nome,
         habito.frequencia,
-        habito.diasSemana ? JSON.stringify(habito.diasSemana) : null,
-        habito.metaVezes,
+        habito.diasSemana || null, // ✅ Passa o array diretamente
+        habito.metaVezes || null,
         habito.updatedAt,
         habito.id,
       ],
@@ -70,7 +77,7 @@ export class HabitoRepository implements IHabitoRepository {
     ]);
   }
 
-  //  REGISTROS 
+  // ── Registros ────────────────────────────────────────────────────────
 
   async saveRegistro(registro: HabitoRegistro): Promise<void> {
     await pool.query(
@@ -133,12 +140,10 @@ export class HabitoRepository implements IHabitoRepository {
     let maximo = 0;
     let streakAtual = 0;
 
-    // Ordenar por data (mais antigo para mais novo)
     const sorted = [...registros].sort(
       (a, b) => a.data.getTime() - b.data.getTime(),
     );
 
-    // Calcular streak
     let lastDate: Date | null = null;
     for (const registro of sorted) {
       if (lastDate === null) {
@@ -171,16 +176,17 @@ export class HabitoRepository implements IHabitoRepository {
     return registro !== null;
   }
 
-  //  MAPPERS 
+  // ── Mappers ──────────────────────────────────────────────────────────
 
   private mapToEntity(row: any): Habito {
+    // ✅ O PostgreSQL já retorna o array como number[], não precisa de JSON.parse
     return Habito.reconstitute({
       id: row.id,
       blocoId: row.bloco_id,
       nome: row.nome,
       frequencia: row.frequencia as FrequenciaHabito,
-      diasSemana: row.dias_semana ? JSON.parse(row.dias_semana) : null,
-      metaVezes: row.meta_vezes,
+      diasSemana: row.dias_semana || null, // ✅ Já é um array
+      metaVezes: row.meta_vezes || null,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
     });

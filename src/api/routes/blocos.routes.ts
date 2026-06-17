@@ -42,42 +42,13 @@ router.get("/blocos/ping", (req, res) => {
 
 router.use(authenticate);
 
-// Rotas existentes
+// Rotas estáticas — devem vir ANTES das rotas com :id para evitar captura incorreta
 router.get("/blocos/nucleo/:nucleoId", (req, res, next) => {
   blocosController.getByNucleo(req as AuthRequest, res).catch(next);
 });
 
-router.get("/blocos/:id", (req, res, next) => {
-  blocosController.getById(req as AuthRequest, res).catch(next);
-});
-
-router.post("/blocos", (req, res, next) => {
-  blocosController.create(req as AuthRequest, res).catch(next);
-});
-
-router.put("/blocos/:id", (req, res, next) => {
-  blocosController.update(req as AuthRequest, res).catch(next);
-});
-
-router.delete("/blocos/:id", (req, res, next) => {
-  blocosController.delete(req as AuthRequest, res).catch(next);
-});
-
-router.post("/blocos/reorder", (req, res, next) => {
-  blocosController.reorder(req as AuthRequest, res).catch(next);
-});
-
-// NOVAS ROTAS
 router.get("/blocos/parent/:parentId", (req, res, next) => {
   blocosController.getChildren(req as AuthRequest, res).catch(next);
-});
-
-router.get("/blocos/:id/ancestors", (req, res, next) => {
-  blocosController.getAncestors(req as AuthRequest, res).catch(next);
-});
-
-router.put("/blocos/:id/move", (req, res, next) => {
-  blocosController.move(req as AuthRequest, res).catch(next);
 });
 
 router.get("/blocos/canvas/:nucleoId", (req, res, next) => {
@@ -86,6 +57,39 @@ router.get("/blocos/canvas/:nucleoId", (req, res, next) => {
 
 router.put("/blocos/canvas/:nucleoId", (req, res, next) => {
   blocosController.saveCanvasContent(req as AuthRequest, res).catch(next);
+});
+
+router.post("/blocos/reorder", (req, res, next) => {
+  blocosController.reorder(req as AuthRequest, res).catch(next);
+});
+
+router.post("/blocos", (req, res, next) => {
+  blocosController.create(req as AuthRequest, res).catch(next);
+});
+
+// Rotas com :id — vêm depois das estáticas
+router.get("/blocos/:id", (req, res, next) => {
+  blocosController.getById(req as AuthRequest, res).catch(next);
+});
+
+router.get("/blocos/:id/ancestors", (req, res, next) => {
+  blocosController.getAncestors(req as AuthRequest, res).catch(next);
+});
+
+router.put("/blocos/:id", (req, res, next) => {
+  blocosController.update(req as AuthRequest, res).catch(next);
+});
+
+router.put("/blocos/:id/move", (req, res, next) => {
+  blocosController.move(req as AuthRequest, res).catch(next);
+});
+
+router.delete("/blocos/:id", (req, res, next) => {
+  blocosController.delete(req as AuthRequest, res).catch(next);
+});
+
+router.patch("/blocos/:id/content", (req, res, next) => {
+  blocosController.patchContent(req as AuthRequest, res).catch(next);
 });
 
 export { router };

@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 export type PrioridadeTarefa = "baixa" | "media" | "alta";
-export type StatusTarefa = "pendente" | "concluida" | "atrasada";
+export type StatusTarefa = "pendente" | "concluida" | "atrasada" | "fazendo";
 
 export interface TarefaProps {
   id?: string;
@@ -150,6 +150,16 @@ export class Tarefa {
 
   updatePosicao(posicao: number): void {
     this._posicao = posicao;
+    this.touch();
+  }
+
+  updateStatus(status: StatusTarefa): void {
+    if (status === "concluida" && this._status !== "concluida") {
+      this._concluidaEm = new Date();
+    } else if (status !== "concluida") {
+      this._concluidaEm = null;
+    }
+    this._status = status;
     this.touch();
   }
 

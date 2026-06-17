@@ -16,6 +16,7 @@ import { GetBlocoByIdQuery } from "../../../application/queries/blocos/GetBlocoB
 import {
   isTipoBloco,
   TipoBloco,
+  TIPO_BLOCO_VALORES,
 } from "../../../domain/value-objects/TipoBloco";
 import { BlocoRepository } from "../../../infrastructure/persistence/repositories/BlocoRepository";
 import { pool } from "../../../infrastructure/persistence/db/connection";
@@ -112,7 +113,7 @@ const query = new GetBlocoByIdQuery(id, userId, nucleoId || "");
       if (!isTipoBloco(tipo)) {
         return res.status(400).json({
           success: false,
-          message: `Tipo inválido. Válidos: tarefas, habitos, notas, lista, calendario, calculo, colecoes, timer, canvas`,
+          message: `Tipo inválido. Válidos: ${TIPO_BLOCO_VALORES.join(", ")}`,
         });
       }
 
@@ -363,6 +364,41 @@ const query = new GetBlocoByIdQuery(id, userId, nucleoId || "");
       });
     } catch (error: any) {
       logger.error("Erro ao buscar canvas:", error);
+      return res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  async patchContent(req: AuthRequest, res: Response): Promise<Response> {
+    try {
+      const userId = req.user?.id;
+      const id = req.params.id as string;
+      const { html, tipo } = req.body as { html: string; tipo?: string };
+
+      if (!userId)
+        return res.status(401).json({ success: false, message: "Usuário não autenticado" });
+      if (!id)
+        return res.status(400).json({ success: false, message: "ID do bloco é obrigatório" });
+      if (html === undefined)
+        return res.status(400).json({ success: false, message: "Conteúdo é obrigatório" });
+
+      const result = await pool.query(
+        `UPDATE blocos
+         SET conteudo = $1,
+             ${tipo ? "tipo = $3," : ""}
+             updated_at = NOW()
+         WHERE id = $2
+           AND deleted_at IS NULL
+           AND nucleo_id IN (SELECT id FROM nucleos WHERE user_id = $${tipo ? 4 : 3})
+         RETURNING id`,
+        tipo ? [html, id, tipo, userId] : [html, id, userId],
+      );
+
+      if (result.rows.length === 0)
+        return res.status(404).json({ success: false, message: "Bloco não encontrado" });
+
+      return res.json({ success: true });
+    } catch (error: any) {
+      logger.error("Erro ao atualizar conteúdo do bloco:", error);
       return res.status(400).json({ success: false, message: error.message });
     }
   }

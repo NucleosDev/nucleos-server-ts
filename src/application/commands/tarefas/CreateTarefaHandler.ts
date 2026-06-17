@@ -6,6 +6,10 @@ import { TarefaResponseDto } from "../../dto/tarefa.dto";
 import { NotFoundException } from "../../common/exceptions/not-found.exception";
 import { ForbiddenException } from "../../common/exceptions/forbidden.exception";
 import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
+import {
+  deleteCache,
+  CacheKeys,
+} from "../../../infrastructure/cache/redis.service";
 
 export class CreateTarefaHandler {
   constructor(private readonly tarefaRepository: ITarefaRepository) {}
@@ -50,6 +54,7 @@ export class CreateTarefaHandler {
     });
 
     await this.tarefaRepository.save(tarefa);
+    await deleteCache(CacheKeys.tarefasByBloco(blocoId));
 
     await NotificationsController.createNotification(
       command.userId,

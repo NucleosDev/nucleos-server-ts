@@ -14,8 +14,8 @@ export class UserLevelRepository {
   async save(entity: UserLevel): Promise<void> {
     const data = entity.toDatabase();
     await pool.query(
-      `INSERT INTO user_levels (id, user_id, level, current_xp, next_level_xp, total_xp_earned, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO user_levels (id, user_id, level, current_xp, next_level_xp, total_xp_earned, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (user_id) DO UPDATE SET
          level = EXCLUDED.level,
          current_xp = EXCLUDED.current_xp,
@@ -29,7 +29,6 @@ export class UserLevelRepository {
         data.current_xp,
         data.next_level_xp,
         data.total_xp_earned,
-        data.created_at,
         data.updated_at,
       ],
     );

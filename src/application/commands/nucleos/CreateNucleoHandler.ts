@@ -5,6 +5,13 @@ import { Nucleo } from "../../../domain/entities/Nucleo";
 import { NucleoIconRepository } from "../../../infrastructure/persistence/repositories/NucleoIconRepository";
 import { isValidUuid } from "../../../shared/utils/uuid";
 import { NotificationsController } from "../../../api/controllers/v1/NotificationsController";
+import {
+  deleteCache,
+  CacheKeys,
+} from "../../../infrastructure/cache/redis.service";
+import { eventDispatcher } from "../../../shared/EventDispatcher";
+import { NucleoCriadoEvent } from "../../../domain/events/NucleoCriadoEvent";
+
 export class CreateNucleoHandler {
   constructor(
     private readonly nucleoRepository: INucleoRepository,
@@ -44,6 +51,12 @@ export class CreateNucleoHandler {
     });
 
     await this.nucleoRepository.save(nucleo);
+    await deleteCache(CacheKeys.nucleosByUser(command.userId));
+
+    await eventDispatcher.dispatch(
+      new NucleoCriadoEvent(command.userId, nucleo.id, nucleo.nome),
+    );
+
     await NotificationsController.createNotification(
       command.userId,
       "Novo Núcleo Criado!",

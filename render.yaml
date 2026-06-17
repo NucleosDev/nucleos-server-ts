@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: nucleos-backend
+    runtime: node
+    region: oregon
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: API_VERSION
+        value: v1
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_HOST
+        sync: false
+      - key: SUPABASE_PORT
+        value: 5432
+      - key: SUPABASE_DATABASE
+        sync: false
+      - key: SUPABASE_USERNAME
+        sync: false
+      - key: SUPABASE_PASSWORD
+        sync: false
+      - key: JWT_KEY
+        generateValue: true
+      - key: JWT_ISSUER
+        sync: false
+      - key: JWT_AUDIENCE
+        sync: false
+      - key: JWT_EXPIRES_MINUTES
+        value: 90
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: 6379
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 60000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 200

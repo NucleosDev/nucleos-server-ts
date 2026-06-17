@@ -1,7 +1,12 @@
-// src/application/queries/blocos/GetBlocosByNucleoHandler.ts
 import { IBlocoRepository } from "../../../domain/repositories/IBlocoRepository";
 import { GetBlocosByNucleoQuery } from "./GetBlocosByNucleoQuery";
 import { pool } from "../../../infrastructure/persistence/db/connection";
+import {
+  getCache,
+  setCache,
+  CacheKeys,
+  TTL,
+} from "../../../infrastructure/cache/redis.service";
 
 export class GetBlocosByNucleoHandler {
   constructor(private readonly blocoRepository: IBlocoRepository) {}
@@ -10,6 +15,14 @@ export class GetBlocosByNucleoHandler {
     const { nucleoId, userId, parentId } = query;
 
     if (!userId) throw new Error("Usuário não autenticado");
+
+    const cacheKey =
+      parentId !== undefined
+        ? `${CacheKeys.blocosByNucleo(nucleoId)}:parent:${parentId ?? "null"}`
+        : CacheKeys.blocosByNucleo(nucleoId);
+
+    const cached = await getCache<any[]>(cacheKey);
+    if (cached) return cached;
 
     const nucleoCheck = await pool.query(
       `SELECT id FROM nucleos WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`,
@@ -22,17 +35,14 @@ export class GetBlocosByNucleoHandler {
 
     let blocos;
     if (parentId !== undefined && parentId !== null) {
-      // Buscar filhos de um parent específico
       blocos = await this.blocoRepository.findByParentId(parentId, nucleoId);
     } else if (parentId === null) {
-      // Buscar apenas raízes
       blocos = await this.blocoRepository.findRootBlocos(nucleoId);
     } else {
-      // Comportamento original: todos os blocos
       blocos = await this.blocoRepository.findByNucleoId(nucleoId);
     }
 
-    return blocos.map((b) => ({
+    const result = blocos.map((b) => ({
       id: b.id,
       nucleoId: b.nucleoId,
       tipo: b.tipo,
@@ -47,5 +57,8 @@ export class GetBlocosByNucleoHandler {
       updatedAt: b.updatedAt.toISOString(),
       deletedAt: b.deletedAt?.toISOString() || null,
     }));
+
+    await setCache(cacheKey, result, TTL.DEFAULT);
+    return result;
   }
 }

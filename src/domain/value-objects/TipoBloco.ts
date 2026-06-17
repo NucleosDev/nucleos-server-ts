@@ -10,7 +10,23 @@ export type TipoBloco =
   | "calendario"
   | "calculo"
   | "colecoes"
-  | "canvas";
+  | "tabela"
+  | "galeria"
+  | "quadro"
+  | "exercicios"
+  | "canvas"
+  // Document text block types
+  | "paragraph"
+  | "h1"
+  | "h2"
+  | "h3"
+  | "quote"
+  | "code"
+  | "bullet-list"
+  | "numbered-list"
+  | "todo"
+  | "divider"
+  | "column-layout";
 
 // Array de valores para validação e iteração
 export const TIPO_BLOCO_VALORES: readonly string[] = [
@@ -24,7 +40,22 @@ export const TIPO_BLOCO_VALORES: readonly string[] = [
   "calendario",
   "calculo",
   "colecoes",
+  "tabela",
+  "galeria",
+  "quadro",
+  "exercicios",
   "canvas",
+  "paragraph",
+  "h1",
+  "h2",
+  "h3",
+  "quote",
+  "code",
+  "bullet-list",
+  "numbered-list",
+  "todo",
+  "divider",
+  "column-layout",
 ] as const;
 
 // Validador principal

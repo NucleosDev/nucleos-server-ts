@@ -28,11 +28,12 @@ import {
   closeRedis,
   isRedisAvailable,
 } from "../infrastructure/cache/redis.service";
+import { registerGamificationListeners } from "../application/listeners/GamificationEventListener";
 
 const healthController = new HealthController();
 
-// dns.setDefaultResultOrder("ipv4first");
-console.log("SERVER FILE EXECUTED");
+// Wire gamification event listeners before any requests are handled
+registerGamificationListeners();
 
 interface CustomError extends Error {
   status?: number;
@@ -43,8 +44,8 @@ const app: Express = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(normalizeBodyMiddleware);
 
 // CONFIG
@@ -58,20 +59,11 @@ const CORS_ORIGINS = env.CORS_ORIGINS
   : ["http://localhost:3000", "https://nucleos-ui.vercel.app"];
 
 //
-// ENV CHECK
-//
-console.log("ENV CHECK:");
-console.log("CORS_ORIGINS raw:", env.CORS_ORIGINS);
-console.log("CORS_ORIGINS parsed:", CORS_ORIGINS);
-console.log("PORT:", env.PORT);
-console.log("NODE_ENV:", env.NODE_ENV);
-
-//
 // MIDDLEWARE DE LOG DE REQUISIÇÕES (antes de tudo)
 //
 app.use((req, res, next) => {
-  logger.info(
-    `${req.method} ${req.url} - Origin: ${req.headers.origin || "sem origin"}`,
+  logger.debug(
+    `${req.method} ${req.url} - Origin: ${req.headers.origin || "no origin"}`,
   );
   next();
 });
@@ -182,7 +174,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 //
 const limiter = rateLimit({
   windowMs: Number(env.RATE_LIMIT_WINDOW_MS) || 900000,
-  max: Number(env.RATE_LIMIT_MAX_REQUESTS) || 100000,
+  max: Number(env.RATE_LIMIT_MAX_REQUESTS) || 500,
   skip: (req) => req.method === "OPTIONS",
   standardHeaders: true,
   legacyHeaders: false,
@@ -193,11 +185,17 @@ const limiter = rateLimit({
 });
 app.use("/api", limiter);
 
-//
-// BODY PARSERS
-//
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Muitas tentativas de login. Aguarde 1 minuto.",
+  },
+});
 
 //
 // REQUEST ID
@@ -215,10 +213,11 @@ app.use((req, res, next) => {
 // MORGAN LOGGING
 //
 app.use(
-  morgan("dev", {
+  morgan(NODE_ENV === "production" ? "combined" : "dev", {
     stream: {
       write: (msg) => logger.info(msg.trim()),
     },
+    skip: (req) => req.url === "/health",
   }),
 );
 
@@ -267,6 +266,8 @@ setupRouteInterface(app, BASE_PATH);
 //
 // API ROUTES
 //
+app.use(`${BASE_PATH}/Auth/login`, authLimiter);
+app.use(`${BASE_PATH}/Auth/register`, authLimiter);
 app.use(BASE_PATH, router);
 
 // Test endpoint para verificar CORS

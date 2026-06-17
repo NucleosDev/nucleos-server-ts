@@ -2,6 +2,12 @@ import { INucleoRepository } from "../../../domain/repositories/INucleoRepositor
 import { GetNucleosQuery } from "./GetNucleosQuery";
 import { NucleoResponseDto } from "../../dto/nucleo.dto";
 import { NucleoIconRepository } from "../../../infrastructure/persistence/repositories/NucleoIconRepository";
+import {
+  getCache,
+  setCache,
+  CacheKeys,
+  TTL,
+} from "../../../infrastructure/cache/redis.service";
 
 export class GetNucleosHandler {
   constructor(
@@ -10,6 +16,10 @@ export class GetNucleosHandler {
   ) {}
 
   async execute(query: GetNucleosQuery): Promise<NucleoResponseDto[]> {
+    const cacheKey = CacheKeys.nucleosByUser(query.userId);
+    const cached = await getCache<NucleoResponseDto[]>(cacheKey);
+    if (cached) return cached;
+
     const nucleos = await this.nucleoRepository.findAllByUserId(query.userId);
 
     const result: NucleoResponseDto[] = [];
@@ -34,6 +44,8 @@ export class GetNucleosHandler {
         deletedAt: nucleo.deletedAt,
       });
     }
+
+    await setCache(cacheKey, result, TTL.DEFAULT);
     return result;
   }
 }
