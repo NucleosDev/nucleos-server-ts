@@ -6,8 +6,8 @@
     "scripts": {
         "build": "tsc",
         "start": "node dist/api/server.js",
-        "dev": "PORT=7000 tsx watch src/api/server.ts",
-        "dev:kill": "lsof -ti :7000 | xargs kill -9 || true && npm run dev",
+        "dev": "PORT=5000 tsx watch src/api/server.ts",
+        "dev:kill": "lsof -ti :5000 | xargs kill -9 || true && npm run dev",
         "dev:alt": "PORT=5001 tsx watch src/api/server.ts",
         "worker": "ts-node-dev --respawn --transpile-only src/jobs/xpWorker.ts",
         "worker:email": "ts-node-dev --respawn --transpile-only src/jobs/send-email.job.ts",

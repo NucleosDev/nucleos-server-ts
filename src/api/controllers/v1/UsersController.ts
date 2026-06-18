@@ -597,6 +597,186 @@ export class UsersController {
     }
   }
 
+  // 🔁 GET REENTRY STATUS
+
+  static async getReentryStatus(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      const statusResult = await pool.query(
+        `SELECT
+          us.last_login,
+          (SELECT last_activity_date FROM streaks WHERE user_id = $1 ORDER BY last_activity_date DESC NULLS LAST LIMIT 1) AS last_activity,
+          (SELECT current_streak FROM streaks WHERE user_id = $1 ORDER BY last_activity_date DESC NULLS LAST LIMIT 1) AS current_streak,
+          (
+            SELECT COUNT(*) FROM tarefas t
+            JOIN blocos b ON t.bloco_id = b.id
+            JOIN nucleos n ON b.nucleo_id = n.id
+            WHERE n.user_id = $1
+              AND t.status IN ('pendente', 'fazendo')
+              AND t.data_vencimento < CURRENT_DATE
+              AND t.deleted_at IS NULL
+          ) AS overdue_count,
+          (
+            SELECT COUNT(*) FROM tarefas t
+            JOIN blocos b ON t.bloco_id = b.id
+            JOIN nucleos n ON b.nucleo_id = n.id
+            WHERE n.user_id = $1
+              AND t.status IN ('pendente', 'fazendo')
+              AND t.deleted_at IS NULL
+          ) AS pending_count
+         FROM user_security us
+         WHERE us.user_id = $1`,
+        [userId],
+      );
+
+      const topNucleoResult = await pool.query(
+        `SELECT n.id, n.nome, n.cor_destaque, COUNT(t.id) AS overdue_count
+         FROM nucleos n
+         JOIN blocos b ON b.nucleo_id = n.id
+         JOIN tarefas t ON t.bloco_id = b.id
+         WHERE n.user_id = $1
+           AND t.status IN ('pendente', 'fazendo')
+           AND t.data_vencimento < CURRENT_DATE
+           AND t.deleted_at IS NULL
+         GROUP BY n.id, n.nome, n.cor_destaque
+         ORDER BY overdue_count DESC
+         LIMIT 1`,
+        [userId],
+      );
+
+      const row = statusResult.rows[0];
+      const lastLogin = row?.last_login ? new Date(row.last_login) : null;
+      const lastActivity = row?.last_activity ? new Date(row.last_activity) : null;
+      const referenceDate = lastActivity || lastLogin;
+      const daysSince = referenceDate
+        ? Math.floor((Date.now() - referenceDate.getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+
+      const overdueCount = parseInt(row?.overdue_count || "0");
+      const pendingCount = parseInt(row?.pending_count || "0");
+      const currentStreak = parseInt(row?.current_streak || "0");
+
+      let severity: "none" | "soft" | "full" = "none";
+      if (daysSince > 7) severity = "full";
+      else if (daysSince >= 2) severity = "soft";
+
+      const topNucleo = topNucleoResult.rows[0] || null;
+
+      res.json({
+        success: true,
+        data: {
+          needsReentry: severity !== "none",
+          daysSince,
+          overdueTasksCount: overdueCount,
+          pendingTasksCount: pendingCount,
+          topFocus: topNucleo
+            ? {
+                id: topNucleo.id,
+                nome: topNucleo.nome,
+                corDestaque: topNucleo.cor_destaque,
+                overdueCount: parseInt(topNucleo.overdue_count),
+              }
+            : null,
+          streakStatus: {
+            currentStreak,
+            isActive: daysSince <= 1,
+          },
+          severity,
+        },
+      });
+    } catch (error) {
+      logger.error("❌ Erro ao verificar status de reentrada:", error);
+      res.status(500).json({ success: false, message: "Erro interno ao verificar reentrada" });
+    }
+  }
+
+  // ♻️ PROCESS REENTRY
+
+  static async processReentry(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado" });
+        return;
+      }
+
+      // Reschedule tasks overdue 1–3 days → today
+      const rescheduleShortResult = await pool.query(
+        `UPDATE tarefas t
+         SET data_vencimento = CURRENT_DATE, updated_at = NOW()
+         FROM blocos b
+         JOIN nucleos n ON b.nucleo_id = n.id
+         WHERE t.bloco_id = b.id
+           AND n.user_id = $1
+           AND t.status IN ('pendente', 'fazendo')
+           AND t.data_vencimento >= CURRENT_DATE - INTERVAL '3 days'
+           AND t.data_vencimento < CURRENT_DATE
+           AND t.deleted_at IS NULL
+         RETURNING t.id`,
+        [userId],
+      );
+
+      // Reschedule tasks overdue 4–14 days → next week
+      const rescheduleLongResult = await pool.query(
+        `UPDATE tarefas t
+         SET data_vencimento = CURRENT_DATE + INTERVAL '7 days', updated_at = NOW()
+         FROM blocos b
+         JOIN nucleos n ON b.nucleo_id = n.id
+         WHERE t.bloco_id = b.id
+           AND n.user_id = $1
+           AND t.status IN ('pendente', 'fazendo')
+           AND t.data_vencimento >= CURRENT_DATE - INTERVAL '14 days'
+           AND t.data_vencimento < CURRENT_DATE - INTERVAL '3 days'
+           AND t.deleted_at IS NULL
+         RETURNING t.id`,
+        [userId],
+      );
+
+      // Soft delete tasks overdue >14 days
+      const archiveResult = await pool.query(
+        `UPDATE tarefas t
+         SET deleted_at = NOW(), updated_at = NOW()
+         FROM blocos b
+         JOIN nucleos n ON b.nucleo_id = n.id
+         WHERE t.bloco_id = b.id
+           AND n.user_id = $1
+           AND t.status IN ('pendente', 'fazendo')
+           AND t.data_vencimento < CURRENT_DATE - INTERVAL '14 days'
+           AND t.deleted_at IS NULL
+         RETURNING t.id`,
+        [userId],
+      );
+
+      const rescheduled =
+        (rescheduleShortResult.rowCount ?? 0) + (rescheduleLongResult.rowCount ?? 0);
+      const archived = archiveResult.rowCount ?? 0;
+
+      logger.info(`♻️ Reentrada processada para ${userId}: ${rescheduled} reagendadas, ${archived} arquivadas`);
+
+      res.json({
+        success: true,
+        data: {
+          rescheduled,
+          archived,
+          message:
+            archived > 0
+              ? `${rescheduled} tarefas reagendadas e ${archived} arquivadas.`
+              : `${rescheduled} tarefas reagendadas. Nada foi apagado.`,
+        },
+      });
+    } catch (error) {
+      logger.error("❌ Erro ao processar reentrada:", error);
+      res.status(500).json({ success: false, message: "Erro interno ao processar reentrada" });
+    }
+  }
+
   // 🗑️ DELETE ACCOUNT (SOFT DELETE)
 
   static async deleteAccount(req: AuthRequest, res: Response): Promise<void> {
