@@ -11,6 +11,7 @@ services:
 
     environment:
       NODE_ENV: development
+      NODE_OPTIONS: --dns-result-order=ipv4first
       PORT: 7000
       API_VERSION: v1
       REDIS_URL: redis://redis:6379
@@ -26,7 +27,7 @@ services:
       - logs:/app/logs
       - uploads:/app/uploads
 
-    command: npm run dev
+    command: node --dns-result-order=ipv4first node_modules/.bin/tsx watch src/api/server.ts
 
     depends_on:
       redis:
