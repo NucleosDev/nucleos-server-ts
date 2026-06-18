@@ -7,6 +7,8 @@ import { logger } from "../../../shared/utils/logger";
 import { pool } from "../../../infrastructure/persistence/db/connection";
 import { CurrentUserService } from "../../../infrastructure/services/current-user.service";
 import { NotificationsController } from "./NotificationsController";
+import { eventDispatcher } from "../../../shared/EventDispatcher";
+import { UserLoginEvent } from "../../../domain/events/UserLoginEvent";
 
 interface UserTokenPayload extends JwtPayload {
   id: string;
@@ -14,7 +16,7 @@ interface UserTokenPayload extends JwtPayload {
   fullName: string;
   role: string;
 }
-
+;
 interface RegisterBody {
   email: string;
   fullName: string;
@@ -433,13 +435,30 @@ export class AuthController {
         return;
       }
 
+      // Verificar se é o primeiro login do dia antes de atualizar last_login
+      const prevLoginRes = await pool.query(
+        `SELECT last_login FROM user_security WHERE user_id = $1`,
+        [user.id],
+      );
+      const prevLastLogin: Date | null = prevLoginRes.rows[0]?.last_login ?? null;
+      const isFirstLoginToday =
+        !prevLastLogin ||
+        new Date(prevLastLogin).toDateString() !== new Date().toDateString();
+
       // Login bem-sucedido - resetar tentativas e atualizar last_login
       await pool.query(
-        `UPDATE user_security 
+        `UPDATE user_security
          SET failed_attempts = 0, last_login = NOW()
          WHERE user_id = $1`,
         [user.id],
       );
+
+      // Conceder XP de login diário (GamificationService garante idempotência por dia)
+      if (isFirstLoginToday) {
+        eventDispatcher
+          .dispatch(new UserLoginEvent(user.id))
+          .catch((err) => logger.warn("Falha ao processar evento de login:", err));
+      }
 
       // Gerar token COM issuer e audience
       const expiresIn = rememberMe ? "7d" : jwtConfig.expiresIn;
@@ -458,11 +477,14 @@ export class AuthController {
         } as SignOptions,
       );
 
-      await NotificationsController.createNotification(
-        user.id,
-        "Você sabia que Nucleos surgiu de um projeto de faculdade? Loucura, não é?",
-        `Que bom que você chegou ${user.fullName || user.email}, aproveite sua jornada hoje!`,
-      );
+      if (isFirstLoginToday) {
+        NotificationsController.createNotification(
+          user.id,
+          "Você sabia que Nucleos surgiu de um projeto de faculdade? Loucura, não é?",
+          `Que bom que você chegou ${user.full_name || user.email}, aproveite sua jornada hoje!`,
+        ).catch((err) => logger.warn("Falha ao criar notificação de login:", err));
+      }
+
       const expiresAt = new Date(
         Date.now() +
           (rememberMe

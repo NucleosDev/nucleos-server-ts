@@ -1,5 +1,6 @@
 import { eventDispatcher } from "../../shared/EventDispatcher";
 import { GamificationService } from "../../infrastructure/services/GamificationService";
+import { logger } from "../../shared/utils/logger";
 
 const gamificationService = new GamificationService();
 
@@ -16,7 +17,7 @@ const EVENT_ACTION_MAP: Record<string, string> = {
 export function registerGamificationListeners(): void {
   Object.entries(EVENT_ACTION_MAP).forEach(([eventName, action]) => {
     eventDispatcher.register(eventName, async (event: any) => {
-      console.log(`[Gamification] Processing event: ${eventName} -> ${action}`);
+      logger.info(`[Gamification] ${eventName} -> ${action}`);
 
       try {
         const result = await gamificationService.processAction({
@@ -26,26 +27,26 @@ export function registerGamificationListeners(): void {
           metadata: event,
         });
 
-        console.log(
-          `[Gamification] Result: +${result.xpGained} XP, Streak: ${result.currentStreak}`,
+        logger.info(
+          `[Gamification] +${result.xpGained} XP, streak: ${result.currentStreak}`,
         );
 
         if (result.leveledUp) {
-          console.log(
-            `[Gamification] Level Up! User ${event.userId} is now level ${result.newLevel}`,
+          logger.info(
+            `[Gamification] level up — user ${event.userId} agora é nível ${result.newLevel}`,
           );
         }
 
         if (result.achievements.length > 0) {
-          console.log(
-            `[Gamification] Achievements unlocked: ${result.achievements.map((a: any) => a.nome).join(", ")}`,
+          logger.info(
+            `[Gamification] conquistas: ${result.achievements.map((a: any) => a.nome).join(", ")}`,
           );
         }
       } catch (error) {
-        console.error(`[Gamification] Error processing ${eventName}:`, error);
+        logger.error(`[Gamification] erro em ${eventName}:`, error);
       }
     });
   });
 
-  console.log("[Gamification] All event listeners registered");
+  logger.info("[Gamification] listeners registrados");
 }

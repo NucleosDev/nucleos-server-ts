@@ -2,6 +2,7 @@
 import { Server as SocketServer } from "socket.io";
 import { Server } from "http";
 import type { ServerOptions as EngineOptions } from "engine.io";
+import { corsConfig } from "../../config/env";
 
 let io: SocketServer | null = null;
 
@@ -13,14 +14,10 @@ export function initSocket(httpServer: Server) {
         origin: string | undefined,
         callback: (err: Error | null, allow: boolean) => void,
       ) => {
-        if (
-          !origin ||
-          origin.includes("localhost") ||
-          origin.includes("3000")
-        ) {
+        if (!origin || corsConfig.origins.some((o) => origin === o || origin.includes("localhost"))) {
           callback(null, true);
         } else {
-          callback(null, true);
+          callback(new Error(`Origin não permitida: ${origin}`), false);
         }
       },
       credentials: true,

@@ -150,6 +150,13 @@ export class NotificationsController {
     titulo: string,
     mensagem: string,
   ): Promise<void> {
+    // Deduplicar: não criar mesma notificação (mesmo título) mais de uma vez por dia
+    const existing = await pool.query(
+      `SELECT 1 FROM notifications WHERE user_id = $1 AND titulo = $2 AND DATE(created_at) = CURRENT_DATE LIMIT 1`,
+      [userId, titulo],
+    );
+    if (existing.rows.length > 0) return;
+
     const id = randomUUID();
     await pool.query(
       `INSERT INTO notifications (id, user_id, titulo, mensagem, created_at)

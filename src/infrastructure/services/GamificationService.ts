@@ -36,9 +36,20 @@ export class GamificationService {
   }): Promise<any> {
     const { userId, action, nucleoId } = params;
 
+    // Idempotência para DAILY_LOGIN: conceder XP apenas uma vez por dia
+    if (action === "DAILY_LOGIN") {
+      const today = new Date().toISOString().split("T")[0];
+      const existing = await this.xpLogRepo.query(
+        "SELECT 1 FROM xp_logs WHERE user_id = $1 AND source = 'DAILY_LOGIN' AND DATE(created_at) = $2 LIMIT 1",
+        [userId, today],
+      );
+      if (existing.rows.length > 0) {
+        return { xpGained: 0, leveledUp: false, newLevel: 0, currentStreak: 0, achievements: [] };
+      }
+    }
+
     const streak = await this.streakRepo.updateStreak(userId);
 
-    // CORRIGIDO: garantir que currentStreak é número
     const currentStreak = streak?.currentStreak ?? 0;
     let xpAmount = this.XP_VALUES[action] || 10;
 
@@ -48,8 +59,12 @@ export class GamificationService {
     else if (currentStreak >= 3) xpAmount *= 1.2;
     xpAmount = Math.floor(xpAmount);
 
-    const todayXp = await this.xpLogRepo.getTodayXp(userId);
-    if (todayXp === 0) xpAmount += 50;
+    // Bônus da primeira ação produtiva do dia (não se aplica a login passivo)
+    const productiveActions = ["COMPLETE_TAREFA", "REGISTER_HABITO", "CREATE_NUCLEO", "CREATE_BLOCO", "CHECK_ITEM_LISTA", "COMPLETE_TIMER"];
+    if (productiveActions.includes(action)) {
+      const todayXp = await this.xpLogRepo.getTodayXp(userId);
+      if (todayXp === 0) xpAmount += 50;
+    }
 
     const levelResult = await this.userLevelRepo.addXp(
       userId,
@@ -58,6 +73,7 @@ export class GamificationService {
       nucleoId,
     );
 
+    // Milestone de streak: conceder apenas uma vez (quando streak acabou de incrementar)
     const streakMilestones: Record<number, number> = {
       3: 50,
       7: 150,
@@ -68,12 +84,24 @@ export class GamificationService {
       365: 50000,
     };
     if (streakMilestones[currentStreak]) {
-      await this.userLevelRepo.addXp(
-        userId,
-        streakMilestones[currentStreak],
-        "STREAK_MILESTONE",
-        nucleoId,
+      const today = new Date().toISOString().split("T")[0];
+      const alreadyGranted = await this.xpLogRepo.query(
+        "SELECT 1 FROM xp_logs WHERE user_id = $1 AND source = 'STREAK_MILESTONE' AND DATE(created_at) = $2 LIMIT 1",
+        [userId, today],
       );
+      if (alreadyGranted.rows.length === 0) {
+        await this.userLevelRepo.addXp(
+          userId,
+          streakMilestones[currentStreak],
+          "STREAK_MILESTONE",
+          nucleoId,
+        );
+        emitToUser(userId, "gamification:streak", {
+          currentStreak,
+          bonus: streakMilestones[currentStreak],
+          message: `${currentStreak} dias consecutivos! Bônus de ${streakMilestones[currentStreak]} XP!`,
+        });
+      }
     }
 
     const achievements = await this.checkAchievements(userId);
@@ -129,6 +157,11 @@ export class GamificationService {
           ach.xp_recompensa,
           "ACHIEVEMENT",
         );
+        emitToUser(userId, "gamification:achievement", {
+          name: ach.nome,
+          xpReward: ach.xp_recompensa,
+          message: `Você desbloqueou "${ach.nome}"! +${ach.xp_recompensa} XP`,
+        });
         unlocked.push(ach);
       }
     }

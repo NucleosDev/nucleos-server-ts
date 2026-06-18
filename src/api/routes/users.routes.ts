@@ -52,6 +52,15 @@ router.get("/plan", (req, res, next) => {
   UsersController.getCurrentPlan(req as AuthRequest, res).catch(next);
 });
 
+// Reentrada
+router.get("/reentry-status", (req, res, next) => {
+  UsersController.getReentryStatus(req as AuthRequest, res).catch(next);
+});
+
+router.post("/reentry-process", (req, res, next) => {
+  UsersController.processReentry(req as AuthRequest, res).catch(next);
+});
+
 // Gerenciamento de conta
 router.delete("/account", (req, res, next) => {
   UsersController.deleteAccount(req as AuthRequest, res).catch(next);

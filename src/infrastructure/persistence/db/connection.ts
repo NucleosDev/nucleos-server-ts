@@ -1,5 +1,9 @@
 import { Pool, PoolClient } from "pg";
+import dns from "dns";
 import { env } from "../../../config/env";
+
+// Docker containers can't reach IPv6 — prefer IPv4 for all DNS lookups globally
+dns.setDefaultResultOrder("ipv4first");
 
 export const pool = new Pool({
   host: env.SUPABASE_HOST,
