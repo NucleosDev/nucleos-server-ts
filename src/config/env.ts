@@ -2,19 +2,15 @@
 import "dotenv/config";
 import { z } from "zod";
 
-// If DATABASE_URL is set (Render, Railway, etc.), parse and inject individual vars
+// DATABASE_URL is the source of truth when set (Render, Railway, Supabase pooler, etc.)
 if (process.env.DATABASE_URL) {
   try {
     const url = new URL(process.env.DATABASE_URL);
-    process.env.SUPABASE_HOST = process.env.SUPABASE_HOST || url.hostname;
-    process.env.SUPABASE_PORT =
-      process.env.SUPABASE_PORT || url.port || "5432";
-    process.env.SUPABASE_DATABASE =
-      process.env.SUPABASE_DATABASE || url.pathname.slice(1);
-    process.env.SUPABASE_USERNAME =
-      process.env.SUPABASE_USERNAME || url.username;
-    process.env.SUPABASE_PASSWORD =
-      process.env.SUPABASE_PASSWORD || url.password;
+    process.env.SUPABASE_HOST = url.hostname;
+    process.env.SUPABASE_PORT = url.port || "5432";
+    process.env.SUPABASE_DATABASE = url.pathname.slice(1);
+    process.env.SUPABASE_USERNAME = decodeURIComponent(url.username);
+    process.env.SUPABASE_PASSWORD = decodeURIComponent(url.password);
   } catch {
     // DATABASE_URL parse failed, relying on individual vars
   }
@@ -52,6 +48,9 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional().default("dev@nucleos.com"),
   SMTP_PASS: z.string().optional().default("temp"),
   EMAIL_FROM: z.string().optional().default("noreply@nucleos.com"),
+
+  // Google OAuth
+  GOOGLE_CLIENT_ID: z.string().optional().default(""),
 
   // CORS
   CORS_ORIGINS: z.string().optional().default("http://localhost:3000"),

@@ -37,6 +37,7 @@ const registerSchema = z
 router.post("/login", validate(loginSchema), AuthController.login);
 router.post("/register", validate(registerSchema), AuthController.register);
 router.post("/refresh-token", AuthController.refreshToken);
+router.post("/google", AuthController.googleSignIn);
 
 //
 // ROTAS PROTEGIDAS

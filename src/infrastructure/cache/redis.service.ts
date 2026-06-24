@@ -20,6 +20,10 @@ export const initRedis = async (): Promise<void> => {
       lazyConnect: true,
     });
 
+    redisClient.on("error", () => {
+      // Evita "Unhandled error event" durante tentativas de conexão
+    });
+
     await redisClient.ping();
     redisAvailable = true;
     logger.info("Redis connected");

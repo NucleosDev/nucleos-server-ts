@@ -9,6 +9,7 @@ import { CurrentUserService } from "../../../infrastructure/services/current-use
 import { NotificationsController } from "./NotificationsController";
 import { eventDispatcher } from "../../../shared/EventDispatcher";
 import { UserLoginEvent } from "../../../domain/events/UserLoginEvent";
+import { OAuth2Client } from "google-auth-library";
 
 interface UserTokenPayload extends JwtPayload {
   id: string;
@@ -16,7 +17,6 @@ interface UserTokenPayload extends JwtPayload {
   fullName: string;
   role: string;
 }
-;
 interface RegisterBody {
   email: string;
   fullName: string;
@@ -440,7 +440,8 @@ export class AuthController {
         `SELECT last_login FROM user_security WHERE user_id = $1`,
         [user.id],
       );
-      const prevLastLogin: Date | null = prevLoginRes.rows[0]?.last_login ?? null;
+      const prevLastLogin: Date | null =
+        prevLoginRes.rows[0]?.last_login ?? null;
       const isFirstLoginToday =
         !prevLastLogin ||
         new Date(prevLastLogin).toDateString() !== new Date().toDateString();
@@ -457,7 +458,9 @@ export class AuthController {
       if (isFirstLoginToday) {
         eventDispatcher
           .dispatch(new UserLoginEvent(user.id))
-          .catch((err) => logger.warn("Falha ao processar evento de login:", err));
+          .catch((err) =>
+            logger.warn("Falha ao processar evento de login:", err),
+          );
       }
 
       // Gerar token COM issuer e audience
@@ -482,7 +485,9 @@ export class AuthController {
           user.id,
           "Você sabia que Nucleos surgiu de um projeto de faculdade? Loucura, não é?",
           `Que bom que você chegou ${user.full_name || user.email}, aproveite sua jornada hoje!`,
-        ).catch((err) => logger.warn("Falha ao criar notificação de login:", err));
+        ).catch((err) =>
+          logger.warn("Falha ao criar notificação de login:", err),
+        );
       }
 
       const expiresAt = new Date(
@@ -759,6 +764,259 @@ export class AuthController {
         message: "Token inválido ou expirado",
       });
       return;
+    }
+  }
+
+  // =====
+  // 🌐 GOOGLE SIGN-IN
+  // =====
+  static async googleSignIn(req: Request, res: Response): Promise<void> {
+    try {
+      const { token } = req.body as { token: string };
+
+      if (!token) {
+        res
+          .status(400)
+          .json({ success: false, message: "Token do Google não fornecido" });
+        return;
+      }
+
+      const clientId =
+        "989373819860-qb1csbaig0afvm9s5ek3p1on3ojco7j4.apps.googleusercontent.com";
+
+      const googleClient = new OAuth2Client(clientId);
+
+      let payload: any;
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken: token,
+          audience: clientId,
+        });
+        payload = ticket.getPayload();
+      } catch {
+        res
+          .status(401)
+          .json({ success: false, message: "Token do Google inválido" });
+        return;
+      }
+
+      if (!payload?.email) {
+        res
+          .status(401)
+          .json({
+            success: false,
+            message: "Não foi possível obter e-mail do Google",
+          });
+        return;
+      }
+
+      const email = payload.email.toLowerCase();
+      const fullName = payload.name || email.split("@")[0];
+      const avatarUrl = payload.picture || null;
+      const googleId = payload.sub;
+
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+
+        // Find or create user
+        let userResult = await client.query(
+          `SELECT u.id, u.email, u.active, up.full_name, up.avatar_url, ur.role,
+                  ul.level, ul.current_xp, ul.next_level_xp, ul.total_xp_earned
+           FROM users u
+           LEFT JOIN user_profiles up ON up.user_id = u.id
+           LEFT JOIN user_roles ur ON ur.user_id = u.id
+           LEFT JOIN user_levels ul ON ul.user_id = u.id
+           WHERE u.email = $1 AND u.deleted_at IS NULL`,
+          [email],
+        );
+
+        let userId: string;
+        let isNew = false;
+
+        if (userResult.rows.length === 0) {
+          // Create new user
+          isNew = true;
+          userId = randomUUID();
+          const nickname = fullName.split(" ")[0] || "Usuário";
+          const freePlan = await client.query(
+            `SELECT id FROM plans WHERE price = 0 LIMIT 1`,
+          );
+          const freePlanId = freePlan.rows[0]?.id ?? null;
+
+          await client.query(
+            `INSERT INTO users (id, email, phone, cpf, password_hash, email_verified, active, created_at, updated_at)
+             VALUES ($1, $2, '', '', $3, true, true, NOW(), NOW())`,
+            [userId, email, await bcrypt.hash(randomUUID(), 6)],
+          );
+          await client.query(
+            `INSERT INTO user_profiles (id, user_id, full_name, nickname, avatar_url, created_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())`,
+            [randomUUID(), userId, fullName, nickname, avatarUrl],
+          );
+          await client.query(
+            `INSERT INTO user_security (id, user_id, failed_attempts, password_updated_at)
+             VALUES ($1, $2, 0, NOW())`,
+            [randomUUID(), userId],
+          );
+          await client.query(
+            `INSERT INTO user_roles (id, user_id, role) VALUES ($1, $2, 'user')`,
+            [randomUUID(), userId],
+          );
+          await client.query(
+            `INSERT INTO user_preferences (user_id, theme, language, notifications, shortcuts, dashboard_layout, updated_at)
+             VALUES ($1, 'system', 'pt-BR', $2, '{}', '{}', NOW())`,
+            [
+              userId,
+              JSON.stringify({ push: true, email: true, streaks: true }),
+            ],
+          );
+          await client.query(
+            `INSERT INTO user_levels (id, user_id, level, current_xp, next_level_xp, total_xp_earned, updated_at)
+             VALUES ($1, $2, 1, 0, 100, 0, NOW())`,
+            [randomUUID(), userId],
+          );
+          if (freePlanId) {
+            await client.query(
+              `INSERT INTO subscriptions (id, user_id, plan_id, started_at, expires_at)
+               VALUES ($1, $2, $3, NOW(), NULL)`,
+              [randomUUID(), userId, freePlanId],
+            );
+          }
+          await client.query(
+            `INSERT INTO nucleos (id, user_id, nome, tipo, created_at, updated_at)
+             VALUES ($1, $2, 'Meu Primeiro Núcleo', 'pessoal', NOW(), NOW())`,
+            [randomUUID(), userId],
+          );
+        } else {
+          userId = userResult.rows[0].id;
+          if (!userResult.rows[0].active) {
+            await client.query("ROLLBACK");
+            res
+              .status(401)
+              .json({ success: false, message: "Conta desativada." });
+            return;
+          }
+          // Update avatar if changed
+          if (avatarUrl) {
+            await client.query(
+              `UPDATE user_profiles SET avatar_url = $1 WHERE user_id = $2`,
+              [avatarUrl, userId],
+            );
+          }
+        }
+
+        await client.query("COMMIT");
+
+        // Re-fetch with full data
+        if (userResult.rows.length === 0) {
+          userResult = await pool.query(
+            `SELECT u.id, u.email, u.active, up.full_name, up.nickname, up.avatar_url,
+                    ur.role, ul.level, ul.current_xp, ul.next_level_xp, ul.total_xp_earned
+             FROM users u
+             LEFT JOIN user_profiles up ON up.user_id = u.id
+             LEFT JOIN user_roles ur ON ur.user_id = u.id
+             LEFT JOIN user_levels ul ON ul.user_id = u.id
+             WHERE u.id = $1`,
+            [userId],
+          );
+        }
+
+        const user = userResult.rows[0];
+
+        // Daily login XP
+        const prevLoginRes = await pool.query(
+          `SELECT last_login FROM user_security WHERE user_id = $1`,
+          [userId],
+        );
+        const prevLastLogin: Date | null =
+          prevLoginRes.rows[0]?.last_login ?? null;
+        const isFirstLoginToday =
+          !prevLastLogin ||
+          new Date(prevLastLogin).toDateString() !== new Date().toDateString();
+
+        await pool.query(
+          `UPDATE user_security SET failed_attempts = 0, last_login = NOW() WHERE user_id = $1`,
+          [userId],
+        );
+
+        if (isFirstLoginToday) {
+          eventDispatcher
+            .dispatch(new UserLoginEvent(userId))
+            .catch((err) =>
+              logger.warn("Falha ao processar evento de login Google:", err),
+            );
+
+          NotificationsController.createNotification(
+            userId,
+            isNew ? "Bem-vindo ao Nucleos! 🎉" : "Bem-vindo de volta!",
+            isNew
+              ? "Sua conta foi criada com Google. Explore seus Núcleos!"
+              : `Bom ver você de novo, ${user?.full_name || email}!`,
+          ).catch(() => {});
+        }
+
+        const token = jwt.sign(
+          {
+            id: userId,
+            email,
+            fullName: user?.full_name || fullName,
+            role: user?.role || "user",
+          },
+          jwtConfig.secret,
+          {
+            expiresIn: jwtConfig.expiresIn,
+            issuer: jwtConfig.issuer,
+            audience: jwtConfig.audience,
+          } as SignOptions,
+        );
+
+        const expiresAt = new Date(
+          Date.now() + env.JWT_EXPIRES_MINUTES * 60 * 1000,
+        ).toISOString();
+
+        logger.info(`Google login: ${email} (ID: ${userId}, novo: ${isNew})`);
+
+        res.json({
+          success: true,
+          message: isNew
+            ? "Conta criada com Google!"
+            : "Login com Google realizado!",
+          token,
+          refreshtoken: null,
+          expiresAt,
+          userId,
+          email,
+          fullName: user?.full_name || fullName,
+          user: {
+            id: userId,
+            email,
+            fullName: user?.full_name || fullName,
+            nickname: user?.nickname || fullName.split(" ")[0],
+            avatarUrl: user?.avatar_url || avatarUrl,
+            level: user?.level || 1,
+            currentXp: user?.current_xp || 0,
+            nextLevelXp: user?.next_level_xp || 100,
+            totalXpEarned: user?.total_xp_earned || 0,
+            emailVerified: true,
+            active: true,
+            role: user?.role || "user",
+          },
+        });
+      } catch (dbErr) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw dbErr;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      logger.error("❌ Erro no Google sign-in:", error);
+      res
+        .status(500)
+        .json({
+          success: false,
+          message: "Erro interno ao processar login com Google",
+        });
     }
   }
 
