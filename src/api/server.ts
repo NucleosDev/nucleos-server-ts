@@ -1,3 +1,5 @@
+import dns from "dns";
+dns.setDefaultResultOrder("ipv4first");
 import "reflect-metadata";
 import express from "express";
 import type { Express, Request, Response, NextFunction } from "express";
@@ -56,7 +58,7 @@ const BASE_PATH = `/api/${API_VERSION}`;
 
 const CORS_ORIGINS = env.CORS_ORIGINS
   ? env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
-  : ["http://localhost:3000", "https://nucleos-ui.vercel.app"];
+  : ["http://localhost:3000", "https://www.nucleos.space", "https://nucleos.space"];
 
 //
 // MIDDLEWARE DE LOG DE REQUISIÇÕES (antes de tudo)
@@ -348,10 +350,15 @@ const startServer = async (port: number): Promise<void> => {
   try {
     const dbHealthy = await testDatabaseConnection();
     if (!dbHealthy) {
-      logger.error("Database connection failed - check your credentials");
-      throw new Error("Database connection failed");
+      logger.error("Database connection failed");
+      logger.warn(
+        "⚠️  Servidor em modo degradado — DB indisponível. " +
+          "Supabase direto (db.*.supabase.co) usa só IPv6; se ECONNREFUSED, use o Connection Pooler " +
+          "(Settings → Database no dashboard) ou habilite IPv4. Verifique também se o projeto está ativo.",
+      );
+    } else {
+      logger.info("Database connected successfully");
     }
-    logger.info("Database connected successfully");
 
     await initRedis();
     if (isRedisAvailable()) {

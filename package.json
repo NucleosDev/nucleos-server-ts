@@ -6,9 +6,9 @@
     "scripts": {
         "build": "tsc",
         "start": "node dist/api/server.js",
-        "dev": "PORT=5000 tsx watch src/api/server.ts",
+        "dev": "NODE_OPTIONS=--dns-result-order=ipv4first PORT=5000 tsx watch src/api/server.ts",
         "dev:kill": "lsof -ti :5000 | xargs kill -9 || true && npm run dev",
-        "dev:alt": "PORT=5001 tsx watch src/api/server.ts",
+        "dev:alt": "NODE_OPTIONS=--dns-result-order=ipv4first PORT=5001 tsx watch src/api/server.ts",
         "worker": "ts-node-dev --respawn --transpile-only src/jobs/xpWorker.ts",
         "worker:email": "ts-node-dev --respawn --transpile-only src/jobs/send-email.job.ts",
         "worker:ai": "ts-node-dev --respawn --transpile-only src/jobs/generate-insights.job.ts",
@@ -29,7 +29,12 @@
         "docker:shell": "docker compose exec api sh",
         "docker:rebuild": "docker compose up -d --build",
         "docker:ps": "docker compose ps",
-        "docker:restart": "docker compose restart"
+        "docker:restart": "docker compose restart",
+        "sonar:up": "docker compose -f docker-compose.sonar.yml up -d",
+        "sonar:down": "docker compose -f docker-compose.sonar.yml down",
+        "sonar:scan": "sonar-scanner",
+        "sonar:scan:ci": "sonar-scanner -Dsonar.token=$SONAR_TOKEN",
+        "sonar": "npm run test -- --coverage --coverageReporters=lcov && sonar-scanner"
     },
     "dependencies": {
         "@anthropic-ai/sdk": "^0.91.0",
@@ -90,6 +95,7 @@
         "nodemon": "^3.0.2",
         "pg-pool": "^3.13.0",
         "prettier": "^3.8.2",
+        "sonarqube-scanner": "^4.3.8",
         "supertest": "^6.3.4",
         "ts-jest": "^29.4.9",
         "ts-node-dev": "^2.0.0",

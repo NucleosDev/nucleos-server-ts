@@ -15,13 +15,13 @@ services:
       - key: API_VERSION
         value: v1
       - key: CORS_ORIGINS
-        sync: false
+        value: "https://www.nucleos.space,https://nucleos.space,http://localhost:3000"
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_HOST
         sync: false
       - key: SUPABASE_PORT
-        value: 5432
+        value: 6543
       - key: SUPABASE_DATABASE
         sync: false
       - key: SUPABASE_USERNAME
@@ -31,9 +31,9 @@ services:
       - key: JWT_KEY
         generateValue: true
       - key: JWT_ISSUER
-        sync: false
+        value: "https://api.nucleos.space"
       - key: JWT_AUDIENCE
-        sync: false
+        value: "https://www.nucleos.space"
       - key: JWT_EXPIRES_MINUTES
         value: 90
       - key: REDIS_URL

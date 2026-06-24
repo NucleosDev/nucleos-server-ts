@@ -1,97 +1,34 @@
-import { Pool, PoolClient } from "pg";
-import dns from "dns";
-import { env } from "../../../config/env";
-
-// Docker containers can't reach IPv6 — prefer IPv4 for all DNS lookups globally
-dns.setDefaultResultOrder("ipv4first");
-
-export const pool = new Pool({
-  host: env.SUPABASE_HOST,
-  port: env.SUPABASE_PORT,
-  user: env.SUPABASE_USERNAME,
-  password: env.SUPABASE_PASSWORD,
-  database: env.SUPABASE_DATABASE,
-  ssl: { rejectUnauthorized: false },
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
-
-export type { PoolClient };
-
-// Logs
-pool.on("connect", () => {
-  console.log("Connected to Supabase");
-});
-
-pool.on("error", (err) => {
-  console.error("❌ Database error:", err);
-});
-
-// Query helper
-export async function query(text: string, params?: any[]) {
-  const start = Date.now();
-
-  const result = await pool.query(text, params);
-
-  const duration = Date.now() - start;
-
-  if (env.NODE_ENV === "development") {
-    console.log("Query:", {
-      text: text.substring(0, 100),
-      duration,
-      rows: result.rowCount,
-    });
-  }
-
-  return result;
-}
-
-//  ESSENCIAL (faltava)
-export async function testDatabaseConnection(): Promise<boolean> {
-  try {
-    await pool.query("SELECT 1");
-    return true;
-  } catch (err) {
-    console.error("DB connection failed:", err);
-    return false;
-  }
-}
-
-/*
-
+import dns from "dns/promises";
 import { Pool, PoolClient, PoolConfig, QueryResult, QueryResultRow } from "pg";
-import dns from "dns";
 import { env } from "../../../config/env";
 
 export type { PoolClient };
 
+const isIpAddress = (host: string): boolean =>
+  /^\d+\.\d+\.\d+\.\d+$/.test(host) || host.includes(":");
 
-async function resolveHost(host: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    dns.lookup(host, { all: true }, (err, addresses) => {
-      if (err || !addresses?.length) {
-        return reject(err ?? new Error("No DNS addresses found"));
-      }
+async function resolveDbHost(host: string): Promise<string> {
+  if (isIpAddress(host)) return host;
 
-      // ordena: IPv4 primeiro (family 4 vem antes de 6)
-      const sorted = addresses.sort((a, b) => a.family - b.family);
-
-      const selected = sorted[0];
-
-      if (!selected) {
-        return reject(new Error("No valid DNS address selected"));
-      }
-
-      console.log(
-        `🌐 DNS resolved → ${selected.address} (IPv${selected.family})`,
+  try {
+    const { address } = await dns.lookup(host, { family: 4 });
+    console.log(`DNS resolved → ${address} (IPv4)`);
+    return address;
+  } catch {
+    try {
+      const { address, family } = await dns.lookup(host);
+      console.warn(
+        `⚠️ ${host} não possui IPv4 — usando ${address} (IPv${family}). ` +
+          `Se falhar com ECONNREFUSED, use o Connection Pooler do Supabase (Settings → Database) ` +
+          `ou habilite o add-on IPv4 no projeto.`,
       );
-
-      resolve(selected.address);
-    });
-  });
+      return address;
+    } catch {
+      console.warn(`⚠️ Falha ao resolver DNS de ${host}, usando hostname original`);
+      return host;
+    }
+  }
 }
-
 
 const baseConfig: PoolConfig = {
   host: env.SUPABASE_HOST,
@@ -105,50 +42,39 @@ const baseConfig: PoolConfig = {
   connectionTimeoutMillis: 5000,
 };
 
-
 export const pool: Pool = new Pool(baseConfig);
 
-
 let initialized = false;
-
 
 async function ensurePoolReady(): Promise<void> {
   if (initialized) return;
 
   try {
-    const resolvedIp = await resolveHost(env.SUPABASE_HOST);
-
-    // 👇 substitui host pelo IP (resolve seu problema real)
+    const resolvedIp = await resolveDbHost(env.SUPABASE_HOST);
     (pool.options as PoolConfig).host = resolvedIp;
-
-    console.log("🔌 Pool configurado com fallback de DNS");
-  } catch (err) {
+  } catch {
     console.warn("⚠️ Falha no DNS fallback, usando host original");
   }
 
   initialized = true;
 }
 
-
 pool.on("connect", () => {
-  console.log("✅ Connected to Supabase");
+  console.log("Connected to Supabase");
 });
 
-pool.on("error", (err: Error) => {
+pool.on("error", (err) => {
   console.error("❌ Database error:", err);
 });
 
-
-export async function query<T extends QueryResultRow = any>(
+export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
-  params?: any[],
+  params?: unknown[],
 ): Promise<QueryResult<T>> {
   await ensurePoolReady();
 
   const start = Date.now();
-
   const result = await pool.query<T>(text, params);
-
   const duration = Date.now() - start;
 
   if (env.NODE_ENV === "development") {
@@ -162,11 +88,9 @@ export async function query<T extends QueryResultRow = any>(
   return result;
 }
 
-
 export async function testDatabaseConnection(): Promise<boolean> {
   try {
     await ensurePoolReady();
-
     await pool.query("SELECT 1");
     return true;
   } catch (err) {
@@ -174,6 +98,3 @@ export async function testDatabaseConnection(): Promise<boolean> {
     return false;
   }
 }
-
-//
-*/
