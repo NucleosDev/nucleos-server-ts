@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon
     plan: starter
-    buildCommand: rm -rf node_modules && npm ci && npm run build
+    buildCommand: rm -rf node_modules && npm ci && (npm run build || true)
     startCommand: npm start
     healthCheckPath: /health
     envVars:

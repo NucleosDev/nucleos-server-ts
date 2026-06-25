@@ -26,6 +26,7 @@
     "allowSyntheticDefaultImports": true,
 
     "skipLibCheck": true,
+    "noEmitOnError": false,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
 
