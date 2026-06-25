@@ -18,6 +18,9 @@ export interface AuthUser {
 export interface AuthRequest extends Request<any, any, any, any> {
   user?: AuthUser;
   requestId?: string;
+  body: any;
+  params: any;
+  query: any;
 }
 
 // ==
