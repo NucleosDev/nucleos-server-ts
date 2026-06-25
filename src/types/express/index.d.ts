@@ -1,5 +1,3 @@
-import { UserPayload } from "../../types/auth";
-
 declare global {
   namespace Express {
     interface Request {
@@ -8,26 +6,12 @@ declare global {
         email: string;
         role: string;
       };
+      requestId?: string;
+      timedout?: boolean;
     }
   }
-}
 
-declare module "express-serve-static-core" {
-  interface Request {
-    requestId?: string;
-  }
-}
-
-export {};
-
-export {};
-
-declare global {
   var __serverStarted: boolean | undefined;
 }
 
 export {};
-
-declare global {
-  var __serverStarted: boolean | undefined;
-}

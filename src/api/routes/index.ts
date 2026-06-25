@@ -3,15 +3,6 @@ import { Router } from "express";
 import { authRoutes } from "./auth.routes";
 import { router as usersRoutes } from "./users.routes";
 
-import "express";
-
-declare module "express-serve-static-core" {
-  interface Request {
-    requestId?: string;
-    timedout?: boolean;
-  }
-}
-
 import { nucleosRoutes } from "./nucleos.routes";
 import { router as blocosRoutes } from "./blocos.routes";
 import { colecoesRoutes } from "./colecoes.routes";
